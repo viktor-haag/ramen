@@ -1,0 +1,147 @@
+{
+  "stellenangebotsart": "SELBSTAENDIGKEIT",
+  "stellenangebotsTitel": "Python Advanced",
+  "stellenangebotsBeschreibung": "Lehrauftrag auf freiberuflicher Basis: Vermittlung von Fachwissen in der objektorientierten Programmierung in Python.\n\nBeauftragungsbeginn: 26.10.2026, 23.11.2026 (und weitere Beauftragungstermine)\nOrtsunabhängig: Homeoffice oder an einem unserer Standorte\n\nDauer: 4 Wochen\nUnterrichtszeiten: Mo-Fr 8:30-15:35 Uhr, in Wochen mit Feiertagen an den anderen Tagen bis 17:10 Uhr\n\nWIR, alfatraining, suchen SIE!\n\nalfatraining® ist ein arbeitsmarktorientiertes Bildungsunternehmen, das berufliche Weiterbildungsprogramme über moderne Videotechnik anbietet.\n\nZu unserem Unternehmensfilm geht´s hier entlang:\nhttps://www.alfatraining.de/lernen-mit-alfatraining\n\nGeben Sie Ihr Expertenwissen weiter und gestalten Sie die Weiterbildung der neuesten Generation!\n\nIhr Einsatzbereich\n\nSie unterrichten Informatiker:innen, Fachinformatiker:innen, Programmierer:innen und Fachkräfte mit entsprechender Berufserfahrung.\n\nQualifizierte Vermittlung der folgenden Bereiche:\n\n- Module, Pakete und Fehlerbehandlungen\n- Künstliche Intelligenz (KI) im Arbeitsprozess\n- Strings und OOP‐Grundlagen\n- Vertiefung in die objektorientierte Programmierung\n- Arbeiten mit Dateien, Datenbanken und Webentwicklung\n- Projektarbeit, Zertifizierungsvorbereitung „PCAP™ – Certified Associate Python Programmer“ (in englischer Sprache)\n\nWeitere Informationen finden Sie unter:\n\nhttps://www.alfatraining.de/kurse/weiterbildung-python-advanced\n\nIhr Profil\n\n- Ausbildung oder Studium und praktische Expertise\n- Erfahrung als Trainer (w/m/d) vorteilhaft\n- Kenntnisse im Videopräsenzunterricht optional\n\nIhre Vorteile\n\n- Lehraufträge auf freiberuflicher Basis in einem expandierenden Unternehmen\n- Attraktive Beauftragungszeiten\n- wohnortnahe Einsatzmöglichkeiten oder bequem im Homeoffice mit unserer modernen Videokonferenzsoftware alfaview®\n\nIhre Bewerbung als Freelancer\n\nDamit wir Ihre Bewerbung so schnell wie möglich bearbeiten können, senden Sie uns Ihre aussagekräftiges Dienstleisterprofil (inkl. beruflichem Werdegang, Kompetenzen, Zertifizierungen und Nachweisen) bitte ausschließlich über unser Bewerbungsformular: https://www.alfatraining.de/dozierende-bewerbungsformular.\n\nBitte achten Sie darauf, uns Ihre Unterlagen im pdf- Format zu senden.\n\nGerne prüfen wir Ihre Unterlagen und nehmen Sie in unseren Dienstleisterpool auf. Bitte beachten Sie, dass Ihre Daten bis auf Widerruf bei uns gespeichert werden, um Sie auch für künftige Einsätze berücksichtigen zu können. Der Widerruf kann jederzeit an bewerbung@example.invalid erfolgen.\n\nKontakt\n\nExample Bildungszentrum GmbH\nMax Mustermann | Erika Musterfrau\nMusterstraße 1\n12345 Musterstadt\n\nTel: 000 0000-000\nE-Mail: bewerbung@example.invalid\n\nWir freuen uns auf Ihre Bewerbung!",
+  "arbeitszeitVollzeit": true,
+  "eintrittszeitraum": {
+    "von": "2026-10-26"
+  },
+  "verguetungsangabe": "KEINE_ANGABEN",
+  "vertragsdauer": "KEINE_ANGABE",
+  "stellenlokationen": [
+    {
+      "adresse": {
+        "strasse": "Frankfurter Allee",
+        "hausnummer": "73",
+        "plz": "10247",
+        "ort": "Berlin",
+        "region": "BERLIN",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 52.5144248,
+      "laenge": 13.465452
+    },
+    {
+      "adresse": {
+        "strasse": "Kriegsstraße",
+        "hausnummer": "100",
+        "plz": "76133",
+        "ort": "Karlsruhe, Baden",
+        "region": "BADEN_WUERTTEMBERG",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 49.0057197,
+      "laenge": 8.4049084
+    },
+    {
+      "adresse": {
+        "strasse": "Gutleutstraße",
+        "hausnummer": "34-36",
+        "plz": "60329",
+        "ort": "Frankfurt am Main",
+        "region": "HESSEN",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 50.1061435,
+      "laenge": 8.6686369
+    },
+    {
+      "adresse": {
+        "strasse": "Hellweg",
+        "hausnummer": "8",
+        "plz": "44787",
+        "ort": "Bochum",
+        "region": "NORDRHEIN_WESTFALEN",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 51.47989915100004,
+      "laenge": 7.22023452500008
+    },
+    {
+      "adresse": {
+        "strasse": "Graf-Adolf-Str.",
+        "hausnummer": "67",
+        "plz": "40210",
+        "ort": "Düsseldorf",
+        "region": "NORDRHEIN_WESTFALEN",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 51.2189116,
+      "laenge": 6.7866524
+    },
+    {
+      "adresse": {
+        "strasse": "Eintrachtweg",
+        "hausnummer": "19",
+        "plz": "30173",
+        "ort": "Hannover",
+        "region": "NIEDERSACHSEN",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 52.3652302,
+      "laenge": 9.7776358
+    },
+    {
+      "adresse": {
+        "strasse": "Landshuter Allee",
+        "hausnummer": "12-14",
+        "plz": "80637",
+        "ort": "München",
+        "region": "BAYERN",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 48.1484534,
+      "laenge": 11.5373018
+    },
+    {
+      "adresse": {
+        "strasse": "Friedrichstraße",
+        "hausnummer": "13",
+        "plz": "70174",
+        "ort": "Stuttgart",
+        "region": "BADEN_WUERTTEMBERG",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 48.7821815,
+      "laenge": 9.1775379
+    },
+    {
+      "adresse": {
+        "strasse": "Hammerbrookstraße",
+        "hausnummer": "93",
+        "plz": "20097",
+        "ort": "Hamburg",
+        "region": "HAMBURG",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 53.5451794,
+      "laenge": 10.0252962
+    },
+    {
+      "adresse": {
+        "strasse": "Rudolphstraße",
+        "hausnummer": "30",
+        "plz": "90489",
+        "ort": "Nürnberg, Mittelfranken",
+        "region": "BAYERN",
+        "land": "DEUTSCHLAND"
+      },
+      "breite": 49.4588199,
+      "laenge": 11.0926777
+    }
+  ],
+  "homeofficemoeglich": true,
+  "homeofficetyp": "NACH_VEREINBARUNG",
+  "veroeffentlichungszeitraum": {
+    "von": "2026-09-29"
+  },
+  "datumErsteVeroeffentlichung": "2025-01-27",
+  "aenderungsdatum": "2026-09-29T09:06:26.339",
+  "istBetreut": false,
+  "hauptberuf": "Informatiker/in",
+  "firma": "alfatraining Bildungszentrum GmbH",
+  "arbeitgeberKundennummerHash": "B1uI-VVbWW1P5U3F8Dc8FWLNlcfpehFSi__pNJ8EbIo=",
+  "allianzpartnerUrl": "http://www.arbeitsagentur.de",
+  "allianzpartnerName": "arbeitsagentur.de",
+  "referenznummer": "10001-1000911926-S"
+}

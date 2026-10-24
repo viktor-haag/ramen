@@ -1,0 +1,15 @@
+.git
+.superpowers
+docs
+data
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/*.egg-info
+**/*.db
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+frontend/tests
+backend/tests

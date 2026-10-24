@@ -1,0 +1,570 @@
+{
+  "app": {
+    "title": "RAMEN",
+    "tagline": "Applications Made Every Night"
+  },
+  "nav": {
+    "dashboard": "Start",
+    "feed": "Feed",
+    "applications": "Bewerbungen",
+    "profiles": "Suchprofile",
+    "me": "Mein Profil",
+    "settings": "Einstellungen",
+    "language": "Sprache"
+  },
+  "theme": {
+    "label": "Design: {mode}",
+    "auto": "Automatisch",
+    "light": "Hell",
+    "dark": "Dunkel"
+  },
+  "common": {
+    "add": "Hinzufügen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "loading": "Lädt…",
+    "none": "Keine",
+    "noReason": "keine Details angegeben"
+  },
+  "addPosting": {
+    "button": "Stelle hinzufügen",
+    "title": "Stelle hinzufügen",
+    "urlLabel": "Link zur Stelle",
+    "urlHint": "URL einer Stellenanzeige einfügen",
+    "fetch": "Abrufen",
+    "skip": "Ohne Link erfassen",
+    "preview": "Vorschau",
+    "save": "Merken",
+    "open": "Bewerbung öffnen",
+    "alreadyApplication": "Diese Stelle ist bereits in deinen Bewerbungen.",
+    "noDescription": "Keine Beschreibung",
+    "manualTitle": "Stelle manuell erfassen",
+    "manualHint": "Die Stelle konnte nicht automatisch gelesen werden: {reason}",
+    "fields": {
+      "title": "Titel",
+      "company": "Firma",
+      "location": "Ort",
+      "url": "Link",
+      "description": "Beschreibung",
+      "employmentType": "Anstellungsart",
+      "remote": "Remote"
+    },
+    "employment": {
+      "none": "Keine Angabe",
+      "fulltime": "Vollzeit",
+      "parttime": "Teilzeit"
+    },
+    "remote": {
+      "unknown": "Unbekannt",
+      "yes": "Ja",
+      "no": "Nein"
+    },
+    "back": "Zurück"
+  },
+  "dashboard": {
+    "title": "Start",
+    "newPostings": "Neue Stellen",
+    "newPostingsOpen": "Zum Feed",
+    "upcoming": "Termine (7 Tage)",
+    "noUpcoming": "Keine Termine in den nächsten 7 Tagen.",
+    "stale": "Ohne Rückmeldung seit > 14 Tagen",
+    "noStale": "Nichts wartet auf Rückmeldung.",
+    "runs": "Letzte Suchläufe",
+    "noRuns": "Noch keine Suchläufe.",
+    "runResult": "{n} neu",
+    "noError": "Unbekannter Fehler",
+    "reload": "Neu laden",
+    "untitled": "Stelle ohne Titel"
+  },
+  "feed": {
+    "title": "Feed",
+    "total": "Keine Stellen | 1 Stelle | {n} Stellen",
+    "empty": "Keine Stellen passen zu den aktuellen Filtern.",
+    "foundAgo": "gefunden {when}",
+    "actions": {
+      "save": "Merken",
+      "unsave": "Entmerken",
+      "dismiss": "Verwerfen",
+      "undismiss": "Wiederherstellen"
+    },
+    "refresh": {
+      "button": "Aktualisieren",
+      "running": "Suche läuft…",
+      "newHits": "Keine neuen Stellen | 1 neue Stelle | {n} neue Stellen",
+      "alreadyRunning": "Suchläufe laufen bereits.",
+      "failed": "1 Suchlauf fehlgeschlagen | {n} Suchläufe fehlgeschlagen",
+      "toProfiles": "Suchprofile prüfen"
+    },
+    "drawer": {
+      "found": "Gefunden am {date}",
+      "published": "veröffentlicht am {date}",
+      "openSource": "Quelle öffnen",
+      "noDescription": "Keine Beschreibung vorhanden."
+    },
+    "filters": {
+      "search": "Suche",
+      "found": "Gefunden",
+      "range": {
+        "today": "Heute",
+        "7d": "7 Tage",
+        "30d": "30 Tage",
+        "all": "Alle"
+      },
+      "location": "Ort",
+      "radius": "Umkreis (km)",
+      "source": "Quelle",
+      "manual": "Manuell",
+      "profile": "Profil",
+      "employmentType": "Arbeitszeit",
+      "employment": {
+        "fulltime": "Vollzeit",
+        "parttime": "Teilzeit"
+      },
+      "remote": "Nur Remote",
+      "triage": "Sichtungsstatus",
+      "fit": "Fit",
+      "fitNone": "Nicht bewertet",
+      "sort": "Sortierung",
+      "sortOptions": {
+        "first_seen_at": "Zuletzt gefunden",
+        "published_at": "Zuletzt veröffentlicht",
+        "fit": "Fit"
+      }
+    }
+  },
+  "applications": {
+    "title": "Bewerbungen",
+    "board": "Board",
+    "table": "Tabelle",
+    "showFinished": "Beendete anzeigen",
+    "hideSaved": "Gemerkte ausblenden",
+    "search": "Suchen",
+    "untitled": "Stelle ohne Titel",
+    "noCompany": "Keine Firma",
+    "daysSince": "heute | seit 1 Tag in diesem Status | seit {n} Tagen in diesem Status",
+    "menu": {
+      "changeStatus": "Status ändern",
+      "reopen": "Wieder eröffnen als",
+      "open": "Details öffnen"
+    },
+    "columns": {
+      "title": "Titel",
+      "company": "Firma",
+      "location": "Ort",
+      "status": "Status",
+      "lastChange": "Letzter Wechsel",
+      "created": "Erstellt"
+    }
+  },
+  "profiles": {
+    "title": "Suchprofile",
+    "add": "Neues Profil",
+    "empty": "Noch keine Suchprofile.",
+    "lastRun": "Letzter Lauf",
+    "never": "nie",
+    "runNow": "Jetzt ausführen",
+    "running": "Läuft…",
+    "alreadyRunning": "Für dieses Profil läuft bereits eine Suche.",
+    "history": "Lauf-Historie",
+    "noHistory": "Noch keine Läufe.",
+    "deleteTitle": "Suchprofil löschen?",
+    "deleteText": "{name} wird entfernt. Gefundene Stellen bleiben erhalten.",
+    "noExtractors": "Keine Such-Plugins verfügbar.",
+    "disabledInSettings": "in den Einstellungen deaktiviert",
+    "notLoadable": "nicht ladbar",
+    "keywordsHint": "Mit Komma oder Enter trennen.",
+    "keywordsTooMany": "Höchstens {max} Stichwörter verwenden.",
+    "keywordsTooLong": "Jedes Stichwort darf höchstens {max} Zeichen lang sein.",
+    "pickOne": "Mindestens einen Extraktor auswählen.",
+    "runCounts": "{new} neu / {total} gefunden / {invalid} ungültig",
+    "schedule": {
+      "off": "Kein Zeitplan",
+      "every": "Alle {n} Std."
+    },
+    "dialog": {
+      "new": "Neues Suchprofil",
+      "edit": "Suchprofil bearbeiten"
+    },
+    "runStatus": {
+      "running": "Läuft",
+      "ok": "OK",
+      "error": "Fehlgeschlagen",
+      "timeout": "Zeitüberschreitung"
+    },
+    "fields": {
+      "name": "Name",
+      "keywords": "Stichwörter",
+      "location": "Ort",
+      "radius": "Umkreis (km)",
+      "employmentType": "Arbeitszeit",
+      "anyHours": "Beliebig",
+      "remote": "Nur Remote",
+      "enabled": "Aktiv",
+      "schedule": "Zeitplan",
+      "extractors": "Extraktoren"
+    },
+    "pluginsFailed": "Such-Plugins konnten nicht geladen werden; Speichern ist deaktiviert."
+  },
+  "me": {
+    "title": "Mein Profil",
+    "notice": {
+      "profile": "Deine Unterlagen und der Freitext werden zur Profilerstellung an {provider} gesendet.",
+      "extraction": "Bilder und Scans werden zur Textextraktion an {provider} gesendet.",
+      "none": "Noch keine LLM-Konfiguration. Lege in den Einstellungen eine an, um ein Profil zu erstellen."
+    },
+    "documents": {
+      "title": "Unterlagen",
+      "file": "Datei (PDF, PNG, JPG, WEBP, TXT, MD)",
+      "description": "Beschreibung (optional)",
+      "upload": "Hochladen",
+      "empty": "Noch keine Unterlagen. Lade deinen Lebenslauf, Zeugnisse oder andere Dokumente hoch.",
+      "kind": {
+        "text": "Textdatei",
+        "pdf_text": "PDF mit Text",
+        "pdf_scan": "Gescanntes PDF",
+        "image": "Bild"
+      },
+      "usable": "Nutzbar",
+      "unusable": "Nicht nutzbar (kein Text)",
+      "source": {
+        "extracted": "aus Datei gelesen",
+        "llm": "KI-Extraktion",
+        "manual": "von dir bearbeitet"
+      },
+      "viewText": "Text ansehen oder bearbeiten",
+      "textHint": "Der Text fließt in die Profilerstellung ein. Beim Speichern gilt er als von dir bearbeitet; ein leerer Text macht die Unterlage unbrauchbar.",
+      "extract": "Text per LLM extrahieren",
+      "extractNoImages": "Die Konfiguration für die Textextraktion unterstützt keine Bilder. Wähle in den Einstellungen eine bildfähige aus.",
+      "extractNoConfig": "Es gibt noch keine LLM-Konfiguration. Lege in den Einstellungen eine an, um Text aus Bildern zu extrahieren.",
+      "download": "Herunterladen",
+      "deleteTitle": "Unterlage löschen?",
+      "deleteText": "„{name}“ wird entfernt."
+    },
+    "freeText": {
+      "title": "Freitext",
+      "label": "Über mich und Rahmenbedingungen",
+      "hint": "Alles, was nicht in den Unterlagen steht: Wünsche, Rahmenbedingungen wie Ort oder Gehalt, Ziele. Wird automatisch gespeichert.",
+      "tooLong": "Der Text darf höchstens {max} Zeichen lang sein.",
+      "notSaved": "Der Freitext ist länger als {max} Zeichen und wurde nicht gespeichert."
+    },
+    "profile": {
+      "title": "Profil",
+      "create": "Profil erstellen",
+      "recreate": "Profil neu erstellen",
+      "used": "{n} Unterlage genutzt | {n} Unterlagen genutzt",
+      "unused": "{n} ohne Text (ignoriert)",
+      "generatedAt": "Erstellt {date}",
+      "edited": "Von dir bearbeitet",
+      "inputsChanged": "Unterlagen oder Freitext haben sich seit der Erstellung geändert. Erstelle das Profil neu, um die Änderungen zu berücksichtigen.",
+      "overwriteTitle": "Bearbeitetes Profil ersetzen?",
+      "overwrite": "Ersetzen",
+      "overwriteText": "Du hast das Profil von Hand bearbeitet. Beim Neuerstellen gehen deine Änderungen verloren.",
+      "changedWhileGenerating": "Das Profil wurde während der Erstellung geändert; es wurde nichts überschrieben."
+    },
+    "markdown": {
+      "edit": "Bearbeiten",
+      "preview": "Vorschau",
+      "empty": "Noch kein Profil."
+    },
+    "limitExceeded": "Tageslimit erreicht; diese Aktion lief trotzdem."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Language / Sprache",
+    "plugins": "Plugins",
+    "enabled": "Aktiviert",
+    "saved": "Einstellungen gespeichert.",
+    "notLoadable": "Nicht ladbar",
+    "noSettings": "Dieses Plugin hat keine Einstellungen.",
+    "capability": {
+      "search": "Suche",
+      "fetch": "Abruf per URL"
+    },
+    "danger": {
+      "title": "Gefahrenbereich",
+      "clearFeed": "Feed leeren",
+      "clearFeedHint": "Löscht alle Stellenanzeigen ohne Bewerbung samt Laufhistorie. Bewerbungen und Profile bleiben erhalten.",
+      "clearFeedConfirm": "Alle Anzeigen ohne Bewerbung und die Laufhistorie löschen? Das kann nicht rückgängig gemacht werden.",
+      "clearFeedDone": "Feed geleert: {postings} Anzeigen und {runs} Läufe gelöscht.",
+      "deleteProfile": "Nutzerprofil löschen",
+      "deleteProfileHint": "Löscht deine Unterlagen samt Dateien, den Freitext, das erzeugte Profil und alle Fit-Bewertungen. LLM-Konfigurationen bleiben erhalten.",
+      "deleteProfileConfirm": "Alle Profil-Unterlagen, den Freitext, das Profil und alle Fit-Bewertungen löschen? Das kann nicht rückgängig gemacht werden.",
+      "deleteProfileDone": "Nutzerprofil gelöscht: {documents} Unterlagen und {fits} Fit-Bewertungen entfernt.",
+      "reset": "Alles zurücksetzen",
+      "resetHint": "Löscht alle Anzeigen, Bewerbungen (mit Verlauf, Terminen, Kontakten und Anhängen), Suchprofile, die Laufhistorie, Plugin-Einstellungen, KI-Konfigurationen samt API-Schlüsseln, KI-Einstellungen und Nutzung sowie dein Nutzerprofil mit allen Unterlagen.",
+      "resetConfirm": "Alle Daten löschen? Das entfernt Anzeigen, Bewerbungen mit Verlauf, Terminen, Kontakten und Anhängen, Suchprofile, die Laufhistorie, Plugin-Einstellungen, KI-Konfigurationen samt API-Schlüsseln, KI-Einstellungen und Nutzung sowie dein Nutzerprofil mit allen Unterlagen. Das kann nicht rückgängig gemacht werden.",
+      "resetDone": "Alles zurückgesetzt: {total} Datensätze gelöscht.",
+      "typeToConfirm": "Zur Bestätigung {word} eingeben"
+    }
+  },
+  "status": {
+    "saved": "gemerkt",
+    "preparing": "in Vorbereitung",
+    "applied": "beworben",
+    "interviewing": "im Gespräch",
+    "offer": "Angebot",
+    "rejected": "abgesagt",
+    "withdrawn": "zurückgezogen",
+    "accepted": "angenommen"
+  },
+  "triage": {
+    "new": "neu",
+    "saved": "gemerkt",
+    "dismissed": "verworfen"
+  },
+  "appointmentKind": {
+    "deadline": "Frist",
+    "interview": "Gespräch",
+    "other": "Sonstiges"
+  },
+  "attachmentKind": {
+    "cv": "Lebenslauf",
+    "cover_letter": "Anschreiben",
+    "other": "Sonstiges"
+  },
+  "errors": {
+    "not_found": "Nicht gefunden.",
+    "network_error": "Der Server ist nicht erreichbar.",
+    "validation_error": "Einige Eingaben sind ungültig.",
+    "posting_not_found": "Stelle nicht gefunden.",
+    "application_not_found": "Bewerbung nicht gefunden.",
+    "appointment_not_found": "Termin nicht gefunden.",
+    "contact_not_found": "Kontakt nicht gefunden.",
+    "attachment_not_found": "Anhang nicht gefunden.",
+    "profile_not_found": "Suchprofil nicht gefunden.",
+    "plugin_not_found": "Plugin \"{name}\" nicht gefunden.",
+    "plugin_not_loadable": "Plugin \"{name}\" konnte nicht geladen werden.",
+    "no_plugin_for_url": "Kein Plugin kann diese URL verarbeiten.",
+    "fetch_failed": "Die Stelle konnte nicht abgerufen werden: {reason}",
+    "unknown_plugin": "Unbekannte Plugins: {names}",
+    "already_saved": "Diese Stelle ist bereits gemerkt.",
+    "not_saved": "Diese Stelle ist nicht gemerkt.",
+    "not_dismissed": "Diese Stelle ist nicht verworfen.",
+    "invalid_transition": "Der Status kann nicht von \"{from}\" zu \"{to}\" wechseln.",
+    "not_terminal": "Nur beendete Bewerbungen können wieder eröffnet werden.",
+    "attachment_too_large": "Der Anhang ist zu groß (maximal {max_mb} MB).",
+    "has_application": "Diese Stelle hat eine Bewerbung und kann nicht ausgeblendet werden. Entferne zuerst die Bewerbung.",
+    "application_has_data": "Diese Bewerbung enthält bereits Daten und kann nicht entfernt werden.",
+    "runs_active": "Suchläufe sind aktiv. Bitte warte, bis sie beendet sind.",
+    "llm_not_configured": "Es gibt noch keine LLM-Konfiguration. Lege eine in den Einstellungen an.",
+    "document_not_found": "Dokument nicht gefunden.",
+    "document_unreadable": "Dieses Dokument konnte nicht gelesen werden (beschädigt oder passwortgeschützt).",
+    "document_too_large": "Das Dokument ist zu groß (maximal {max_mb} MB).",
+    "unsupported_document_type": "Dieser Dateityp wird nicht unterstützt. Nutze PDF, PNG, JPG, WEBP, TXT oder MD.",
+    "llm_no_image_support": "Das Extraktionsmodell unterstützt keine Bilder. Wähle in den Einstellungen eine bildfähige Konfiguration.",
+    "document_extraction_not_needed": "Dieses Dokument hat bereits Text; die LLM-Extraktion ist nur für Bilder und eingescannte PDFs gedacht.",
+    "llm_config_not_found": "LLM-Konfiguration nicht gefunden.",
+    "llm_config_name_taken": "Eine LLM-Konfiguration mit diesem Namen existiert bereits.",
+    "llm_config_in_use": "Die Konfiguration \"{name}\" ist Standard oder einem Zweck zugewiesen und kann nicht gelöscht werden.",
+    "llm_auth_failed": "Der LLM-Anbieter hat den API-Schlüssel abgelehnt: {reason}",
+    "llm_rate_limited": "Der LLM-Anbieter begrenzt die Anfragen: {reason}",
+    "llm_bad_request": "Der LLM-Anbieter hat die Anfrage abgelehnt: {reason}",
+    "llm_unavailable": "Der LLM-Anbieter ist nicht erreichbar: {reason}",
+    "llm_timeout": "Der LLM-Anbieter hat nicht rechtzeitig geantwortet: {reason}",
+    "llm_invalid_output": "Das LLM hat eine unbrauchbare Antwort geliefert: {reason}",
+    "profile_missing": "Es gibt noch nichts, woraus ein Profil erstellt werden könnte. Lade zuerst eine Unterlage hoch oder schreibe einen Freitext.",
+    "profile_edited": "Du hast das Profil manuell bearbeitet. Beim Neu-Erstellen werden deine Änderungen ersetzt.",
+    "daily_limit_reached": "Das Tageslimit für die LLM-Nutzung ist erreicht. Es wurde nichts eingereiht."
+  },
+  "detail": {
+    "back": "Zurück zu den Bewerbungen",
+    "openSource": "Quelle öffnen",
+    "saved": "Gespeichert",
+    "status": "Status",
+    "changeStatus": "Status ändern",
+    "reopen": "Wieder eröffnen",
+    "reopenTo": "Wieder eröffnen als",
+    "reopenConfirm": "Wieder eröffnen",
+    "comment": "Kommentar (optional)",
+    "noStatusTargets": "Keine Statuswechsel möglich",
+    "tabs": {
+      "posting": "Stelle",
+      "history": "Verlauf",
+      "appointments": "Termine",
+      "contacts": "Kontakte",
+      "attachments": "Anhänge",
+      "notes": "Notizen"
+    },
+    "noDescription": "Diese Stelle hat keine Beschreibung.",
+    "history": {
+      "empty": "Noch keine Statuswechsel.",
+      "initial": "Angelegt als {to}",
+      "change": "{from} → {to}"
+    },
+    "fields": {
+      "notes": "Notizen",
+      "salary": "Gehaltsvorstellung",
+      "channel": "Bewerbungsweg"
+    },
+    "appointments": {
+      "add": "Termin hinzufügen",
+      "edit": "Termin bearbeiten",
+      "empty": "Keine Termine.",
+      "kind": "Art",
+      "startsAt": "Datum und Uhrzeit",
+      "note": "Notiz",
+      "deleteTitle": "Termin löschen?",
+      "deleteText": "Dieser Termin wird entfernt."
+    },
+    "contacts": {
+      "add": "Kontakt hinzufügen",
+      "edit": "Kontakt bearbeiten",
+      "empty": "Keine Kontakte.",
+      "name": "Name",
+      "role": "Rolle",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "deleteTitle": "Kontakt löschen?",
+      "deleteText": "{name} wird entfernt."
+    },
+    "attachments": {
+      "upload": "Datei hochladen",
+      "empty": "Keine Anhänge.",
+      "kind": "Art",
+      "file": "Datei",
+      "download": "Herunterladen",
+      "deleteTitle": "Anhang löschen?",
+      "deleteText": "{name} wird entfernt."
+    },
+    "unsaved": "Nicht gespeichert. Wird beim Verlassen des Feldes erneut versucht."
+  },
+  "confirm": {
+    "word": "LÖSCHEN"
+  },
+  "ai": {
+    "title": "KI-Einstellungen",
+    "configs": "LLM-Konfigurationen",
+    "add": "Konfiguration hinzufügen",
+    "empty": "Noch keine LLM-Konfiguration. Füge eine hinzu, um KI-Funktionen zu nutzen.",
+    "makeDefault": "Als Standard festlegen",
+    "isDefault": "Standardkonfiguration",
+    "test": "Verbindung testen",
+    "testOk": "Verbindung OK ({model}, {ms} ms)",
+    "deleteTitle": "Konfiguration löschen",
+    "deleteConfirm": "Konfiguration „{name}“ löschen?",
+    "providers": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "openai_compatible": "OpenAI-kompatibel"
+    },
+    "dialog": {
+      "addTitle": "LLM-Konfiguration hinzufügen",
+      "editTitle": "LLM-Konfiguration bearbeiten",
+      "name": "Name",
+      "provider": "Anbieter",
+      "baseUrl": "Basis-URL",
+      "apiKey": "API-Schlüssel",
+      "clearKey": "Gespeicherten Schlüssel entfernen",
+      "model": "Modell",
+      "loadModels": "Modelle laden",
+      "modelsLoaded": "{count} Modelle geladen.",
+      "thinking": "Denkmodus",
+      "supportsImages": "Unterstützt Bilder",
+      "advanced": "Erweitert",
+      "extraBody": "Zusätzlicher Request-Body (JSON-Objekt)",
+      "extraHeaders": "Zusätzliche Header (JSON-Objekt)",
+      "jsonObject": "Muss ein gültiges JSON-Objekt sein.",
+      "jsonStrings": "Alle Header-Werte müssen Zeichenketten sein.",
+      "priceIn": "Preis pro 1 Mio. Eingabe-Tokens (EUR)",
+      "priceOut": "Preis pro 1 Mio. Ausgabe-Tokens (EUR)"
+    },
+    "thinking": {
+      "off": "Aus",
+      "low": "Niedrig",
+      "medium": "Mittel",
+      "high": "Hoch",
+      "max": "Maximal"
+    },
+    "purposes": {
+      "title": "Verwendungszwecke",
+      "hint": "Lege fest, welche Konfiguration für welche Aufgabe verwendet wird. „Standardkonfiguration“ nutzt die mit dem Stern markierte.",
+      "default": "Standardkonfiguration",
+      "profile": "Profilerstellung",
+      "fit": "Fit-Bewertung",
+      "extraction": "Texterkennung aus Bildern und Scans"
+    },
+    "fit": {
+      "title": "Fit-Bewertung",
+      "auto": "Neue Anzeigen automatisch bewerten",
+      "concurrency": "Parallele Bewertungen (1–8)",
+      "hint": "Wird für die Fit-Bewertung von Stellen verwendet.",
+      "language": "Sprache der Begründung bei automatischer Bewertung",
+      "languages": {
+        "en": "Englisch",
+        "de": "Deutsch"
+      }
+    },
+    "limit": {
+      "title": "Tageslimit",
+      "kind": "Art des Limits",
+      "none": "Kein Limit",
+      "tokens": "Tokens pro Tag",
+      "eur": "Euro pro Tag",
+      "tokensValue": "Tokens pro Tag",
+      "eurValue": "Euro pro Tag",
+      "eurHint": "Der Verbrauch von Konfigurationen ohne Preise zählt nicht zu diesem Limit."
+    },
+    "usage": {
+      "title": "Verbrauch",
+      "today": "Heute",
+      "month": "Dieser Monat",
+      "tokens": "{input} Eingabe- / {output} Ausgabe-Tokens",
+      "noPrices": "keine Preise hinterlegt",
+      "limitExceeded": "Tageslimit erreicht."
+    }
+  },
+  "fit": {
+    "needsProfile": "Erstelle zuerst dein Profil auf der Seite „Mein Profil“.",
+    "needsLlm": "Richte zuerst eine LLM-Konfiguration in den Einstellungen ein.",
+    "limitWarning": "Das Tageslimit ist erreicht. Diese Bewertung läuft trotzdem.",
+    "outdated": "Basiert auf einer älteren Version deines Profils.",
+    "state": {
+      "none": "Nicht bewertet",
+      "queued": "Wartet auf Bewertung…",
+      "running": "Wird bewertet…",
+      "error": "Bewertung fehlgeschlagen",
+      "done": "Bewertet"
+    },
+    "rating": {
+      "good": "Passt gut",
+      "moderate": "Passt teilweise",
+      "poor": "Passt schlecht"
+    },
+    "bulk": {
+      "button": "Alle sichtbaren bewerten ({n})",
+      "title": "{n} Stellen bewerten?",
+      "text": "Alle Stellen, die den aktuellen Filtern entsprechen und noch nicht bewertet sind oder deren Bewertung fehlgeschlagen ist, werden an deinen KI-Anbieter gesendet. Das zählt zu deiner Nutzung.",
+      "confirm": "Bewerten",
+      "none": "Nichts zu bewerten: Alle passenden Stellen haben bereits ein Ergebnis oder werden gerade bewertet.",
+      "queued": "Keine Stelle eingereiht | 1 Stelle eingereiht | {n} Stellen eingereiht",
+      "buttonUnknown": "Alle sichtbaren bewerten"
+    },
+    "cancel": {
+      "button": "Bewertung abbrechen ({n})",
+      "done": "Bewertung abgebrochen"
+    },
+    "errors": {
+      "daily_limit": "Tageslimit erreicht – nicht bewertet.",
+      "aborted_by_restart": "Durch einen Neustart abgebrochen.",
+      "discarded": "Abgebrochen, weil Daten gelöscht wurden.",
+      "profile_missing": "Erstelle zuerst dein Profil auf der Seite „Mein Profil“.",
+      "llm_not_configured": "Richte zuerst eine LLM-Konfiguration in den Einstellungen ein.",
+      "llm_unavailable": "Der LLM-Anbieter war nicht erreichbar.",
+      "llm_timeout": "Der LLM-Anbieter hat nicht rechtzeitig geantwortet.",
+      "llm_invalid_output": "Das LLM hat eine unbrauchbare Antwort geliefert.",
+      "llm_auth_failed": "Der LLM-Anbieter hat den API-Schlüssel abgelehnt.",
+      "llm_rate_limited": "Der LLM-Anbieter hat die Anfragen begrenzt.",
+      "llm_bad_request": "Der LLM-Anbieter hat die Anfrage abgelehnt."
+    },
+    "openProfile": "Mein Profil öffnen",
+    "openSettings": "Einstellungen öffnen",
+    "evaluate": "Bewerten",
+    "reevaluate": "Neu bewerten",
+    "evaluatedAt": "Bewertet am {date}",
+    "section": "Fit-Bewertung",
+    "refresh": "Aktualisieren"
+  }
+}

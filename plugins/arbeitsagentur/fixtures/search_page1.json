@@ -1,0 +1,133 @@
+{
+  "ergebnisliste": [
+    {
+      "stellenangebotsart": "SELBSTAENDIGKEIT",
+      "stellenangebotsTitel": "Programmierung mit Python",
+      "arbeitszeitVollzeit": true,
+      "eintrittszeitraum": {
+        "von": "2026-10-26"
+      },
+      "verguetungsangabe": "KEINE_ANGABEN",
+      "vertragsdauer": "KEINE_ANGABE",
+      "stellenlokationen": [
+        {
+          "adresse": {
+            "strasse": "Landshuter Allee",
+            "hausnummer": "12-14",
+            "plz": "80637",
+            "ort": "München",
+            "region": "BAYERN",
+            "land": "DEUTSCHLAND"
+          },
+          "breite": 48.1484534,
+          "laenge": 11.5373018
+        }
+      ],
+      "homeofficemoeglich": true,
+      "homeofficetyp": "NACH_VEREINBARUNG",
+      "veroeffentlichungszeitraum": {
+        "von": "2026-09-29"
+      },
+      "datumErsteVeroeffentlichung": "2025-02-10",
+      "aenderungsdatum": "2026-09-29T10:37:38.766",
+      "hauptberuf": "Informatiker/in",
+      "firma": "alfatraining Bildungszentrum GmbH",
+      "arbeitgeberKundennummerHash": "B1uI-VVbWW1P5U3F8Dc8FWLNlcfpehFSi__pNJ8EbIo=",
+      "referenznummer": "10000-1183300826-S",
+      "entfernung": 2,
+      "alleBerufe": [
+        "Informatiker/in"
+      ]
+    },
+    {
+      "stellenangebotsart": "SELBSTAENDIGKEIT",
+      "stellenangebotsTitel": "Python Advanced",
+      "arbeitszeitVollzeit": true,
+      "eintrittszeitraum": {
+        "von": "2026-10-26"
+      },
+      "verguetungsangabe": "KEINE_ANGABEN",
+      "vertragsdauer": "KEINE_ANGABE",
+      "stellenlokationen": [
+        {
+          "adresse": {
+            "strasse": "Landshuter Allee",
+            "hausnummer": "12-14",
+            "plz": "80637",
+            "ort": "München",
+            "region": "BAYERN",
+            "land": "DEUTSCHLAND"
+          },
+          "breite": 48.1484534,
+          "laenge": 11.5373018
+        }
+      ],
+      "homeofficemoeglich": true,
+      "homeofficetyp": "NACH_VEREINBARUNG",
+      "veroeffentlichungszeitraum": {
+        "von": "2026-09-29"
+      },
+      "datumErsteVeroeffentlichung": "2025-01-27",
+      "aenderungsdatum": "2026-09-29T09:06:26.339",
+      "hauptberuf": "Informatiker/in",
+      "firma": "alfatraining Bildungszentrum GmbH",
+      "arbeitgeberKundennummerHash": "B1uI-VVbWW1P5U3F8Dc8FWLNlcfpehFSi__pNJ8EbIo=",
+      "referenznummer": "10001-1000911926-S",
+      "entfernung": 2,
+      "alleBerufe": [
+        "Informatiker/in"
+      ]
+    },
+    {
+      "stellenangebotsart": "ARBEIT",
+      "stellenangebotsTitel": "Software Engineer Python & CI/CD (m/w/d)",
+      "quereinstiegGeeignet": false,
+      "arbeitszeitVollzeit": true,
+      "eintrittszeitraum": {
+        "von": "2026-12-01"
+      },
+      "verguetungsangabe": "KEINE_ANGABEN",
+      "vertragsdauer": "UNBEFRISTET",
+      "istGeringfuegigeBeschaeftigung": false,
+      "stellenlokationen": [
+        {
+          "adresse": {
+            "plz": "80807",
+            "ort": "München",
+            "region": "BAYERN",
+            "land": "DEUTSCHLAND"
+          },
+          "breite": 48.184086314,
+          "laenge": 11.585884717
+        }
+      ],
+      "chiffrenummer": "JN -102026-83451",
+      "veroeffentlichungszeitraum": {
+        "von": "2026-10-21"
+      },
+      "datumErsteVeroeffentlichung": "2026-10-21",
+      "aenderungsdatum": "2026-10-21T12:03:57.388",
+      "hauptberuf": "Kommunikationselektroniker/in - Informationstechnik",
+      "firma": "Akkodis Germany Tech Experts GmbH",
+      "arbeitgeberKundennummerHash": "2OkOjKGINCO5ExjHWcoaDav4wtkEq-50jCIdKj-3kE0=",
+      "referenznummer": "12634-BB-646375-7878-8260-S",
+      "entfernung": 4,
+      "alleBerufe": [
+        "Kommunikationselektroniker/in - Informationstechnik"
+      ]
+    }
+  ],
+  "maxErgebnisse": 344,
+  "page": 1,
+  "size": 3,
+  "woOutput": {
+    "bereinigterOrt": "München",
+    "suchmodus": "UMKREISSUCHE",
+    "koordinaten": [
+      {
+        "lat": 48.1476759,
+        "lon": 11.5695622
+      }
+    ]
+  }
+}

@@ -1,0 +1,570 @@
+{
+  "app": {
+    "title": "RAMEN",
+    "tagline": "Applications Made Every Night"
+  },
+  "nav": {
+    "dashboard": "Home",
+    "feed": "Feed",
+    "applications": "Applications",
+    "profiles": "Search profiles",
+    "me": "My profile",
+    "settings": "Settings",
+    "language": "Language"
+  },
+  "theme": {
+    "label": "Theme: {mode}",
+    "auto": "Auto",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "common": {
+    "add": "Add",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading…",
+    "none": "None",
+    "noReason": "no details provided"
+  },
+  "addPosting": {
+    "button": "Add posting",
+    "title": "Add posting",
+    "urlLabel": "Link to the posting",
+    "urlHint": "Paste the URL of a job posting",
+    "fetch": "Fetch",
+    "skip": "Capture without link",
+    "preview": "Preview",
+    "save": "Save",
+    "open": "Open application",
+    "alreadyApplication": "This posting is already in your applications.",
+    "noDescription": "No description",
+    "manualTitle": "Enter posting manually",
+    "manualHint": "Could not read the posting automatically: {reason}",
+    "fields": {
+      "title": "Title",
+      "company": "Company",
+      "location": "Location",
+      "url": "Link",
+      "description": "Description",
+      "employmentType": "Employment type",
+      "remote": "Remote"
+    },
+    "employment": {
+      "none": "Not specified",
+      "fulltime": "Full-time",
+      "parttime": "Part-time"
+    },
+    "remote": {
+      "unknown": "Unknown",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "back": "Back"
+  },
+  "dashboard": {
+    "title": "Home",
+    "newPostings": "New postings",
+    "newPostingsOpen": "Open feed",
+    "upcoming": "Appointments (7 days)",
+    "noUpcoming": "No appointments in the next 7 days.",
+    "stale": "No response for over 14 days",
+    "noStale": "Nothing waiting for a response.",
+    "runs": "Recent search runs",
+    "noRuns": "No search runs yet.",
+    "runResult": "{n} new",
+    "noError": "Unknown error",
+    "reload": "Reload",
+    "untitled": "Untitled posting"
+  },
+  "feed": {
+    "title": "Feed",
+    "total": "No postings | 1 posting | {n} postings",
+    "empty": "No postings match the current filters.",
+    "foundAgo": "found {when}",
+    "actions": {
+      "save": "Save",
+      "unsave": "Unsave",
+      "dismiss": "Dismiss",
+      "undismiss": "Restore"
+    },
+    "refresh": {
+      "button": "Refresh",
+      "running": "Searching…",
+      "newHits": "No new postings | 1 new posting | {n} new postings",
+      "alreadyRunning": "Searches are already running.",
+      "failed": "1 search run failed | {n} search runs failed",
+      "toProfiles": "Check search profiles"
+    },
+    "drawer": {
+      "found": "Found {date}",
+      "published": "published {date}",
+      "openSource": "Open source",
+      "noDescription": "No description available."
+    },
+    "filters": {
+      "search": "Search",
+      "found": "Found",
+      "range": {
+        "today": "Today",
+        "7d": "7 days",
+        "30d": "30 days",
+        "all": "All"
+      },
+      "location": "Location",
+      "radius": "Radius (km)",
+      "source": "Source",
+      "manual": "Manual",
+      "profile": "Profile",
+      "employmentType": "Working hours",
+      "employment": {
+        "fulltime": "Full-time",
+        "parttime": "Part-time"
+      },
+      "remote": "Remote only",
+      "triage": "Review status",
+      "fit": "Fit",
+      "fitNone": "Not evaluated",
+      "sort": "Sort by",
+      "sortOptions": {
+        "first_seen_at": "Newest found",
+        "published_at": "Newest published",
+        "fit": "Fit"
+      }
+    }
+  },
+  "applications": {
+    "title": "Applications",
+    "board": "Board",
+    "table": "Table",
+    "showFinished": "Show finished",
+    "hideSaved": "Hide saved",
+    "search": "Search",
+    "untitled": "Untitled posting",
+    "noCompany": "No company",
+    "daysSince": "today | 1 day in this status | {n} days in this status",
+    "menu": {
+      "changeStatus": "Change status",
+      "reopen": "Reopen as",
+      "open": "Open details"
+    },
+    "columns": {
+      "title": "Title",
+      "company": "Company",
+      "location": "Location",
+      "status": "Status",
+      "lastChange": "Last change",
+      "created": "Created"
+    }
+  },
+  "profiles": {
+    "title": "Search profiles",
+    "add": "New profile",
+    "empty": "No search profiles yet.",
+    "lastRun": "Last run",
+    "never": "never",
+    "runNow": "Run now",
+    "running": "Running…",
+    "alreadyRunning": "A search for this profile is already running.",
+    "history": "Run history",
+    "noHistory": "No runs yet.",
+    "deleteTitle": "Delete search profile?",
+    "deleteText": "{name} will be removed. Found postings are kept.",
+    "noExtractors": "No search plugins available.",
+    "disabledInSettings": "disabled in settings",
+    "notLoadable": "not loadable",
+    "keywordsHint": "Separate with comma or Enter.",
+    "keywordsTooMany": "Use at most {max} keywords.",
+    "keywordsTooLong": "Each keyword may have at most {max} characters.",
+    "pickOne": "Select at least one extractor.",
+    "runCounts": "{new} new / {total} found / {invalid} invalid",
+    "schedule": {
+      "off": "No schedule",
+      "every": "Every {n} h"
+    },
+    "dialog": {
+      "new": "New search profile",
+      "edit": "Edit search profile"
+    },
+    "runStatus": {
+      "running": "Running",
+      "ok": "OK",
+      "error": "Failed",
+      "timeout": "Timed out"
+    },
+    "fields": {
+      "name": "Name",
+      "keywords": "Keywords",
+      "location": "Location",
+      "radius": "Radius (km)",
+      "employmentType": "Working hours",
+      "anyHours": "Any",
+      "remote": "Remote only",
+      "enabled": "Active",
+      "schedule": "Schedule",
+      "extractors": "Extractors"
+    },
+    "pluginsFailed": "Search plugins could not be loaded; saving is disabled."
+  },
+  "me": {
+    "title": "My profile",
+    "notice": {
+      "profile": "Your documents and free text are sent to {provider} to create the profile.",
+      "extraction": "Images and scans are sent to {provider} for text extraction.",
+      "none": "No LLM configuration yet. Add one in the settings to create a profile."
+    },
+    "documents": {
+      "title": "Documents",
+      "file": "File (PDF, PNG, JPG, WEBP, TXT, MD)",
+      "description": "Description (optional)",
+      "upload": "Upload",
+      "empty": "No documents yet. Upload your CV, certificates or other documents.",
+      "kind": {
+        "text": "Text file",
+        "pdf_text": "PDF with text",
+        "pdf_scan": "Scanned PDF",
+        "image": "Image"
+      },
+      "usable": "Usable",
+      "unusable": "Not usable (no text)",
+      "source": {
+        "extracted": "extracted from file",
+        "llm": "AI extraction",
+        "manual": "edited by you"
+      },
+      "viewText": "View or edit text",
+      "textHint": "The text is used to create the profile. Saving marks it as edited by you; an empty text makes the document unusable.",
+      "extract": "Extract text with AI",
+      "extractNoImages": "The configuration for text extraction does not support images. Choose an image-capable one in the settings.",
+      "extractNoConfig": "No LLM configuration exists yet. Add one in the settings to extract text from images.",
+      "download": "Download",
+      "deleteTitle": "Delete document?",
+      "deleteText": "{name} will be removed."
+    },
+    "freeText": {
+      "title": "Free text",
+      "label": "About me and constraints",
+      "hint": "Anything not in your documents: preferences, constraints such as location or salary, goals. Saved automatically.",
+      "tooLong": "The text may have at most {max} characters.",
+      "notSaved": "The free text is longer than {max} characters and was not saved."
+    },
+    "profile": {
+      "title": "Profile",
+      "create": "Create profile",
+      "recreate": "Recreate profile",
+      "used": "{n} document used | {n} documents used",
+      "unused": "{n} without text (ignored)",
+      "generatedAt": "Created {date}",
+      "edited": "Edited by you",
+      "inputsChanged": "Documents or free text changed since the profile was created. Recreate it to include the changes.",
+      "overwriteTitle": "Replace edited profile?",
+      "overwrite": "Replace",
+      "overwriteText": "You have edited the profile manually. Recreating the profile replaces your changes.",
+      "changedWhileGenerating": "The profile was changed while it was being generated; nothing was overwritten."
+    },
+    "markdown": {
+      "edit": "Edit",
+      "preview": "Preview",
+      "empty": "No profile yet."
+    },
+    "limitExceeded": "Daily limit reached; this action ran anyway."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language / Sprache",
+    "plugins": "Plugins",
+    "enabled": "Enabled",
+    "saved": "Settings saved.",
+    "notLoadable": "Not loadable",
+    "noSettings": "This plugin has no settings.",
+    "capability": {
+      "search": "Search",
+      "fetch": "Fetch by URL"
+    },
+    "danger": {
+      "title": "Danger zone",
+      "clearFeed": "Clear feed",
+      "clearFeedHint": "Deletes all job postings that have no application, together with the run history. Applications and profiles are kept.",
+      "clearFeedConfirm": "Delete all postings without an application and the run history? This cannot be undone.",
+      "clearFeedDone": "Feed cleared: {postings} postings and {runs} runs deleted.",
+      "deleteProfile": "Delete user profile",
+      "deleteProfileHint": "Deletes your documents including their files, the free text, the generated profile and all fit evaluations. LLM configurations are kept.",
+      "deleteProfileConfirm": "Delete all profile documents, the free text, the profile and all fit evaluations? This cannot be undone.",
+      "deleteProfileDone": "User profile deleted: {documents} documents and {fits} fit evaluations removed.",
+      "reset": "Reset everything",
+      "resetHint": "Deletes all postings, applications (including history, appointments, contacts and attachments), search profiles, run history, plugin settings, AI configurations including API keys, AI settings and usage, and your user profile with its documents.",
+      "resetConfirm": "Delete all data? This removes postings, applications with their history, appointments, contacts and attachments, search profiles, run history, plugin settings, AI configurations including API keys, AI settings and usage, and your user profile with its documents. This cannot be undone.",
+      "resetDone": "Everything reset: {total} records deleted.",
+      "typeToConfirm": "Type {word} to confirm"
+    }
+  },
+  "status": {
+    "saved": "Saved",
+    "preparing": "Preparing",
+    "applied": "Applied",
+    "interviewing": "Interviewing",
+    "offer": "Offer",
+    "rejected": "Rejected",
+    "withdrawn": "Withdrawn",
+    "accepted": "Accepted"
+  },
+  "triage": {
+    "new": "New",
+    "saved": "Saved",
+    "dismissed": "Dismissed"
+  },
+  "appointmentKind": {
+    "deadline": "Deadline",
+    "interview": "Interview",
+    "other": "Other"
+  },
+  "attachmentKind": {
+    "cv": "CV",
+    "cover_letter": "Cover letter",
+    "other": "Other"
+  },
+  "errors": {
+    "not_found": "Not found.",
+    "network_error": "The server could not be reached.",
+    "validation_error": "Some input is invalid.",
+    "posting_not_found": "Posting not found.",
+    "application_not_found": "Application not found.",
+    "appointment_not_found": "Appointment not found.",
+    "contact_not_found": "Contact not found.",
+    "attachment_not_found": "Attachment not found.",
+    "profile_not_found": "Search profile not found.",
+    "plugin_not_found": "Plugin \"{name}\" not found.",
+    "plugin_not_loadable": "Plugin \"{name}\" could not be loaded.",
+    "no_plugin_for_url": "No plugin can handle this URL.",
+    "fetch_failed": "Fetching the posting failed: {reason}",
+    "unknown_plugin": "Unknown plugins: {names}",
+    "already_saved": "This posting is already saved.",
+    "not_saved": "This posting is not saved.",
+    "not_dismissed": "This posting is not dismissed.",
+    "invalid_transition": "The status cannot be changed from \"{from}\" to \"{to}\".",
+    "not_terminal": "Only finished applications can be reopened.",
+    "attachment_too_large": "The attachment is too large (maximum {max_mb} MB).",
+    "has_application": "This posting has an application and cannot be dismissed. Remove the application first.",
+    "application_has_data": "This application already has data and cannot be removed.",
+    "runs_active": "Search runs are active. Wait until they have finished.",
+    "llm_not_configured": "No LLM configuration exists yet. Add one in the settings.",
+    "document_not_found": "Document not found.",
+    "document_unreadable": "This document could not be read (corrupt or password-protected).",
+    "document_too_large": "The document is too large (maximum {max_mb} MB).",
+    "unsupported_document_type": "This file type is not supported. Use PDF, PNG, JPG, WEBP, TXT or MD.",
+    "llm_no_image_support": "The extraction model does not support images. Choose an image-capable configuration in the settings.",
+    "document_extraction_not_needed": "This document already has text; LLM extraction is only for images and scanned PDFs.",
+    "llm_config_not_found": "LLM configuration not found.",
+    "llm_config_name_taken": "An LLM configuration with this name already exists.",
+    "llm_config_in_use": "The configuration \"{name}\" is the default or assigned to a purpose and cannot be deleted.",
+    "llm_auth_failed": "The LLM provider rejected the API key: {reason}",
+    "llm_rate_limited": "The LLM provider is rate limiting requests: {reason}",
+    "llm_bad_request": "The LLM provider rejected the request: {reason}",
+    "llm_unavailable": "The LLM provider is not reachable: {reason}",
+    "llm_timeout": "The LLM provider did not answer in time: {reason}",
+    "llm_invalid_output": "The LLM returned an unusable answer: {reason}",
+    "profile_missing": "There is nothing to build a profile from yet. Add a document or write a free text first.",
+    "profile_edited": "You have edited the profile manually. Regenerating replaces your changes.",
+    "daily_limit_reached": "The daily limit for LLM usage has been reached. Nothing was queued."
+  },
+  "detail": {
+    "back": "Back to applications",
+    "openSource": "Open source",
+    "saved": "Saved",
+    "status": "Status",
+    "changeStatus": "Change status",
+    "reopen": "Reopen",
+    "reopenTo": "Reopen as",
+    "reopenConfirm": "Reopen",
+    "comment": "Comment (optional)",
+    "noStatusTargets": "No status changes available",
+    "tabs": {
+      "posting": "Posting",
+      "history": "History",
+      "appointments": "Appointments",
+      "contacts": "Contacts",
+      "attachments": "Attachments",
+      "notes": "Notes"
+    },
+    "noDescription": "This posting has no description.",
+    "history": {
+      "empty": "No status changes yet.",
+      "initial": "Created as {to}",
+      "change": "{from} → {to}"
+    },
+    "fields": {
+      "notes": "Notes",
+      "salary": "Salary expectation",
+      "channel": "Application channel"
+    },
+    "appointments": {
+      "add": "Add appointment",
+      "edit": "Edit appointment",
+      "empty": "No appointments.",
+      "kind": "Kind",
+      "startsAt": "Date and time",
+      "note": "Note",
+      "deleteTitle": "Delete appointment?",
+      "deleteText": "This appointment will be removed."
+    },
+    "contacts": {
+      "add": "Add contact",
+      "edit": "Edit contact",
+      "empty": "No contacts.",
+      "name": "Name",
+      "role": "Role",
+      "email": "Email",
+      "phone": "Phone",
+      "deleteTitle": "Delete contact?",
+      "deleteText": "{name} will be removed."
+    },
+    "attachments": {
+      "upload": "Upload file",
+      "empty": "No attachments.",
+      "kind": "Kind",
+      "file": "File",
+      "download": "Download",
+      "deleteTitle": "Delete attachment?",
+      "deleteText": "{name} will be removed."
+    },
+    "unsaved": "Not saved. Will retry when you leave the field."
+  },
+  "confirm": {
+    "word": "DELETE"
+  },
+  "ai": {
+    "title": "AI settings",
+    "configs": "LLM configurations",
+    "add": "Add configuration",
+    "empty": "No LLM configuration yet. Add one to use AI features.",
+    "makeDefault": "Make default",
+    "isDefault": "Default configuration",
+    "test": "Test connection",
+    "testOk": "Connection OK ({model}, {ms} ms)",
+    "deleteTitle": "Delete configuration",
+    "deleteConfirm": "Delete the configuration \"{name}\"?",
+    "providers": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "openai_compatible": "OpenAI-compatible"
+    },
+    "dialog": {
+      "addTitle": "Add LLM configuration",
+      "editTitle": "Edit LLM configuration",
+      "name": "Name",
+      "provider": "Provider",
+      "baseUrl": "Base URL",
+      "apiKey": "API key",
+      "clearKey": "Remove the stored key",
+      "model": "Model",
+      "loadModels": "Load models",
+      "modelsLoaded": "{count} models loaded.",
+      "thinking": "Thinking",
+      "supportsImages": "Supports images",
+      "advanced": "Advanced",
+      "extraBody": "Extra request body (JSON object)",
+      "extraHeaders": "Extra headers (JSON object)",
+      "jsonObject": "Must be a valid JSON object.",
+      "jsonStrings": "All header values must be strings.",
+      "priceIn": "Price per 1M input tokens (EUR)",
+      "priceOut": "Price per 1M output tokens (EUR)"
+    },
+    "thinking": {
+      "off": "Off",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "max": "Max"
+    },
+    "purposes": {
+      "title": "Purposes",
+      "hint": "Choose which configuration is used for each task. \"Default configuration\" uses the one marked with the star.",
+      "default": "Default configuration",
+      "profile": "Profile generation",
+      "fit": "Fit evaluation",
+      "extraction": "Text extraction from images and scans"
+    },
+    "fit": {
+      "title": "Fit evaluation",
+      "auto": "Evaluate new postings automatically",
+      "concurrency": "Parallel evaluations (1–8)",
+      "hint": "Used for fit evaluation of job postings.",
+      "language": "Explanation language for automatic evaluations",
+      "languages": {
+        "en": "English",
+        "de": "German"
+      }
+    },
+    "limit": {
+      "title": "Daily limit",
+      "kind": "Limit type",
+      "none": "No limit",
+      "tokens": "Tokens per day",
+      "eur": "Euro per day",
+      "tokensValue": "Tokens per day",
+      "eurValue": "Euro per day",
+      "eurHint": "Usage of configurations without prices does not count toward this limit."
+    },
+    "usage": {
+      "title": "Usage",
+      "today": "Today",
+      "month": "This month",
+      "tokens": "{input} in / {output} out tokens",
+      "noPrices": "no prices set",
+      "limitExceeded": "Daily limit reached."
+    }
+  },
+  "fit": {
+    "needsProfile": "Create your profile on the My profile page first.",
+    "needsLlm": "Set up an LLM configuration in the settings first.",
+    "limitWarning": "The daily limit is reached. This evaluation runs anyway.",
+    "outdated": "Based on an older version of your profile.",
+    "state": {
+      "none": "Not evaluated",
+      "queued": "Waiting for evaluation…",
+      "running": "Evaluating…",
+      "error": "Evaluation failed",
+      "done": "Evaluated"
+    },
+    "rating": {
+      "good": "Good fit",
+      "moderate": "Partial fit",
+      "poor": "Poor fit"
+    },
+    "bulk": {
+      "button": "Evaluate all visible ({n})",
+      "title": "Evaluate {n} postings?",
+      "text": "All postings matching the current filters that are not yet evaluated or whose evaluation failed are sent to your AI provider. This counts towards your usage.",
+      "confirm": "Evaluate",
+      "none": "Nothing to evaluate: all matching postings already have a result, or are being evaluated right now.",
+      "queued": "No postings queued | 1 posting queued | {n} postings queued",
+      "buttonUnknown": "Evaluate all visible"
+    },
+    "cancel": {
+      "button": "Cancel evaluation ({n})",
+      "done": "Evaluation cancelled"
+    },
+    "errors": {
+      "daily_limit": "Daily limit reached – not evaluated.",
+      "aborted_by_restart": "Interrupted by a restart.",
+      "discarded": "Cancelled because data was deleted.",
+      "profile_missing": "Create your profile on the My profile page first.",
+      "llm_not_configured": "Set up an LLM configuration in the settings first.",
+      "llm_unavailable": "The LLM provider was not reachable.",
+      "llm_timeout": "The LLM provider did not answer in time.",
+      "llm_invalid_output": "The LLM returned an unusable answer.",
+      "llm_auth_failed": "The LLM provider rejected the API key.",
+      "llm_rate_limited": "The LLM provider was rate limiting requests.",
+      "llm_bad_request": "The LLM provider rejected the request."
+    },
+    "openProfile": "Open My profile",
+    "openSettings": "Open settings",
+    "evaluate": "Evaluate",
+    "reevaluate": "Re-evaluate",
+    "evaluatedAt": "Evaluated on {date}",
+    "section": "Fit evaluation",
+    "refresh": "Refresh"
+  }
+}

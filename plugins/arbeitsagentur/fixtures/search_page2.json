@@ -1,0 +1,151 @@
+{
+  "ergebnisliste": [
+    {
+      "stellenangebotsart": "ARBEIT",
+      "stellenangebotsTitel": "Senior Python Backend Engineer (m/w/d)",
+      "quereinstiegGeeignet": false,
+      "arbeitszeitSchichtNachtWochenende": false,
+      "arbeitszeitTeilzeitAbend": false,
+      "arbeitszeitTeilzeitNachmittag": false,
+      "arbeitszeitTeilzeitVormittag": false,
+      "arbeitszeitTeilzeitFlexibel": false,
+      "arbeitszeitVollzeit": true,
+      "eintrittszeitraum": {
+        "von": "2026-10-16"
+      },
+      "verguetungsangabe": "KEINE_ANGABEN",
+      "vertragsdauer": "UNBEFRISTET",
+      "istGeringfuegigeBeschaeftigung": false,
+      "stellenlokationen": [
+        {
+          "adresse": {
+            "plz": "80331",
+            "ort": "München",
+            "region": "BAYERN",
+            "land": "DEUTSCHLAND"
+          },
+          "breite": 48.1355827,
+          "laenge": 11.5739758
+        }
+      ],
+      "homeofficemoeglich": false,
+      "chiffrenummer": "35001436",
+      "veroeffentlichungszeitraum": {
+        "von": "2026-10-16"
+      },
+      "datumErsteVeroeffentlichung": "2026-10-16",
+      "aenderungsdatum": "2026-10-16T07:13:34.037",
+      "externeURL": "https://www.persy.jobs/persy/l/job-jq2n7-b",
+      "hauptberuf": "Backend-Entwickler/in",
+      "firma": "Peak One GmbH",
+      "referenznummer": "12288-4967320414-S",
+      "entfernung": 1,
+      "alleBerufe": [
+        "Backend-Entwickler/in"
+      ]
+    },
+    {
+      "stellenangebotsart": "ARBEIT",
+      "stellenangebotsTitel": "Senior Python Developer – Microservices & Data Pipelines (m/w/d)",
+      "quereinstiegGeeignet": false,
+      "arbeitszeitSchichtNachtWochenende": false,
+      "arbeitszeitTeilzeitAbend": false,
+      "arbeitszeitTeilzeitNachmittag": false,
+      "arbeitszeitTeilzeitVormittag": false,
+      "arbeitszeitTeilzeitFlexibel": false,
+      "arbeitszeitVollzeit": true,
+      "eintrittszeitraum": {
+        "von": "2026-11-01"
+      },
+      "verguetungsangabe": "KEINE_ANGABEN",
+      "vertragsdauer": "UNBEFRISTET",
+      "istGeringfuegigeBeschaeftigung": false,
+      "stellenlokationen": [
+        {
+          "adresse": {
+            "strasse": "Dachauerstr. 128",
+            "plz": "80637",
+            "ort": "München",
+            "region": "BAYERN",
+            "land": "DEUTSCHLAND"
+          },
+          "breite": 48.165228,
+          "laenge": 11.539431
+        }
+      ],
+      "homeofficemoeglich": true,
+      "homeofficetyp": "NACH_VEREINBARUNG",
+      "chiffrenummer": "70988",
+      "veroeffentlichungszeitraum": {
+        "von": "2026-10-21"
+      },
+      "datumErsteVeroeffentlichung": "2026-10-21",
+      "aenderungsdatum": "2026-10-21T18:43:29.993",
+      "hauptberuf": "Web Developer",
+      "firma": "BWI GmbH",
+      "arbeitgeberKundennummerHash": "YllzIWAR0MdjVsi5dNGOXHuiLy55xF0e_EGmKFbGKr4=",
+      "referenznummer": "13509-00002111664001-S",
+      "entfernung": 3,
+      "alleBerufe": [
+        "Web Developer"
+      ]
+    },
+    {
+      "stellenangebotsart": "ARBEIT",
+      "stellenangebotsTitel": "Senior Python Backend Engineer* (AI Focus)",
+      "arbeitszeitSchichtNachtWochenende": false,
+      "arbeitszeitTeilzeitAbend": false,
+      "arbeitszeitTeilzeitNachmittag": false,
+      "arbeitszeitTeilzeitVormittag": false,
+      "arbeitszeitTeilzeitFlexibel": false,
+      "arbeitszeitVollzeit": true,
+      "eintrittszeitraum": {
+        "von": "2026-08-10"
+      },
+      "verguetungsangabe": "JAHRESGEHALT",
+      "artDerVerguetung": "GEHALTSSPANNE",
+      "gehaltsspanneVon": 75000.0,
+      "gehaltsspanneBis": 90000.0,
+      "vertragsdauer": "KEINE_ANGABE",
+      "istGeringfuegigeBeschaeftigung": false,
+      "stellenlokationen": [
+        {
+          "adresse": {
+            "ort": "München",
+            "region": "BAYERN",
+            "land": "DEUTSCHLAND"
+          },
+          "breite": 48.1521044,
+          "laenge": 11.5502024
+        }
+      ],
+      "chiffrenummer": "r14241",
+      "veroeffentlichungszeitraum": {
+        "von": "2026-06-30"
+      },
+      "datumErsteVeroeffentlichung": "2026-04-01",
+      "aenderungsdatum": "2026-08-10T13:13:55.875",
+      "hauptberuf": "Softwareentwickler/in",
+      "firma": "inovex GmbH",
+      "arbeitgeberKundennummerHash": "9xPxVzI0AAN8g51FCj6infUxfay0yhdWR1aBH35sNw0=",
+      "referenznummer": "16752-r14241-S",
+      "entfernung": 2,
+      "alleBerufe": [
+        "Softwareentwickler/in"
+      ]
+    }
+  ],
+  "maxErgebnisse": 344,
+  "page": 2,
+  "size": 3,
+  "woOutput": {
+    "bereinigterOrt": "München",
+    "suchmodus": "UMKREISSUCHE",
+    "koordinaten": [
+      {
+        "lat": 48.1476759,
+        "lon": 11.5695622
+      }
+    ]
+  }
+}

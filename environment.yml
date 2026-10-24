@@ -1,0 +1,6 @@
+name: job_search
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - -e ./backend[dev]

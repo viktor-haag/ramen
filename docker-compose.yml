@@ -1,0 +1,10 @@
+services:
+  jobtracker:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      # Own plugins: uncomment to replace the bundled plugins with ./plugins (folder is mounted over /app/plugins).
+      # - ./plugins:/app/plugins
+    restart: unless-stopped

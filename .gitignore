@@ -1,0 +1,22 @@
+data/
+__pycache__/
+.pytest_cache/
+.venv/
+node_modules/
+frontend/dist/
+*.db
+test-results/
+playwright-report/
+*.egg-info/
+
+# Agentic coding artifacts (workflow notes, specs, plans, scratch) – not part of the app
+.superpowers/
+docs/superpowers/
+.claude/
+CLAUDE.md
+AGENTS.md
+.cursor/
+.aider*
+
+# Tool caches
+.ruff_cache/
