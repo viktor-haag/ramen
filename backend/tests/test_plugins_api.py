@@ -59,3 +59,19 @@ def test_settings_reach_runner(client, app):
     client.post(f"/api/profiles/{pid}/run")
     assert app.state.run_service.wait_idle(30)
     assert client.get("/api/runs").json()[0]["total_count"] == 3  # max=2 + shared-1
+
+
+def test_default_off_plugin_listed_disabled_with_notice(client):
+    plugins = by_name(client)
+    assert plugins["optin"]["enabled"] is False
+    assert plugins["optin"]["notice"] == {"de": "Achtung", "en": "Careful"}
+    assert plugins["good"]["enabled"] is True and plugins["good"]["notice"] is None
+    assert plugins["broken"]["enabled"] is True and plugins["broken"]["notice"] is None
+
+
+def test_enable_default_off_plugin(client):
+    res = client.put("/api/plugins/optin", json={"enabled": True, "settings": {}})
+    assert res.status_code == 200 and res.json()["enabled"] is True
+    assert by_name(client)["optin"]["enabled"] is True
+    res = client.put("/api/plugins/optin", json={"enabled": False, "settings": {}})
+    assert by_name(client)["optin"]["enabled"] is False

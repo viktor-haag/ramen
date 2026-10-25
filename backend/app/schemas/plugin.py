@@ -10,6 +10,7 @@ class PluginOut(BaseModel):
     settings: dict
     settings_schema: dict | None
     error: str | None
+    notice: dict[str, str] | None = None
 
 
 class PluginUpdate(BaseModel):

@@ -100,13 +100,13 @@ class RunService:
 
     def effective_plugins(self, session: Session, profile: SearchProfile) -> list[PluginInfo]:
         wanted = set(profile.plugins or [])
-        disabled = set(session.scalars(select(PluginSetting.plugin).where(PluginSetting.enabled.is_(False))))
+        states = dict(session.execute(select(PluginSetting.plugin, PluginSetting.enabled)).all())
         return [
             info
             for info in self._registry.usable()
             if Capability.SEARCH in info.capabilities
             and (not wanted or info.name in wanted)
-            and info.name not in disabled
+            and states.get(info.name, info.enabled_by_default)
         ]
 
     def start_runs(self, profile_ids: list[int] | None, trigger: RunTrigger) -> list[int]:

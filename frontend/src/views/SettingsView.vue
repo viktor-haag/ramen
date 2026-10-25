@@ -113,6 +113,14 @@ async function toggleEnabled(p: PluginOut, value: boolean | null) {
           <strong>{{ t("settings.notLoadable") }}</strong>: {{ p.error }}
         </v-alert>
         <template v-else-if="drafts[p.name]">
+          <v-alert
+            v-if="p.notice"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+            data-test="plugin-notice"
+          >{{ p.notice[locale] ?? p.notice.en }}</v-alert>
           <SchemaForm
             v-if="p.settings_schema"
             v-model="drafts[p.name].settings"

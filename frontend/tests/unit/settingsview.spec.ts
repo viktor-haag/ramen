@@ -192,6 +192,27 @@ describe("SettingsView", () => {
     w.unmount();
   });
 
+  it("shows a plugin notice in the current language, falling back to English", async () => {
+    const optin = { ...plugins[0], name: "optin", display_name: "Optin", enabled: false, notice: { de: "Achtung", en: "Careful" } };
+    const enOnly = { ...plugins[0], name: "enonly", display_name: "EnOnly", notice: { en: "Only English" } };
+    const base = get.getMockImplementation()!;
+    get.mockImplementation(async (path: string) => (path === "/plugins" ? ([optin, enOnly, plugins[0]] as never) : base(path)));
+    const w = await mountView();
+    const notice = (name: string) => panel(w, name).find("[data-test=plugin-notice]");
+    await expand(w, "optin");
+    expect(notice("optin").text()).toContain("Careful");
+    expect(notice("optin").classes()).toContain("v-alert");
+    await expand(w, "enonly");
+    expect(notice("enonly").text()).toContain("Only English");
+    await expand(w, "arbeitsagentur");
+    expect(notice("arbeitsagentur").exists()).toBe(false);
+    setLocale("de");
+    await flushPromises();
+    expect(notice("optin").text()).toContain("Achtung");
+    expect(notice("enonly").text()).toContain("Only English");
+    w.unmount();
+  });
+
   it("shows field errors from 422 on save", async () => {
     const w = await mountView();
     await expand(w, "arbeitsagentur");

@@ -38,10 +38,11 @@ def _out(key: str, info: PluginInfo, row: PluginSetting | None) -> PluginOut:
         display_name=info.display_name,
         capabilities=sorted(info.capabilities),
         url_patterns=info.url_patterns,
-        enabled=row.enabled if row is not None else True,
+        enabled=row.enabled if row is not None else info.enabled_by_default,
         settings=_current_settings(info, row.settings if row is not None else None),
         settings_schema=_json_schema(info),
         error=info.error,
+        notice=info.notice,
     )
 
 

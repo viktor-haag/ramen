@@ -54,6 +54,10 @@ class Extractor(ABC):
     timeout_seconds: ClassVar[int] = 120
     # random pause (min, max seconds) between consecutive search starts against this source
     start_spacing_seconds: ClassVar[tuple[float, float]] = (2.0, 6.0)
+    # without a stored PluginSetting row the plugin counts as enabled only if this is True
+    enabled_by_default: ClassVar[bool] = True
+    # warning text per language ("de", "en"), shown in the plugin's settings panel
+    notice: ClassVar[dict[str, str] | None] = None
 
     def search(self, profile: SearchProfileDTO, settings: BaseModel) -> list[JobPosting]:
         raise NotImplementedError

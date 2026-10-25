@@ -274,6 +274,7 @@ export interface PluginOut {
   settings: Record<string, unknown>;
   settings_schema: Record<string, unknown> | null;
   error: string | null;
+  notice?: Record<string, string> | null;
 }
 
 export interface PluginUpdate {

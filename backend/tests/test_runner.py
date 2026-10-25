@@ -175,7 +175,20 @@ def test_effective_plugins(service, session_factory):
     with session_factory() as s:
         names = {i.name for i in service.effective_plugins(s, s.get(SearchProfile, all_pid))}
     # empty list = all usable SEARCH plugins; broken (error) is excluded
-    assert names == {"good", "hang", "crash", "garbage", "httperror", "sysexit"}
+    assert names == {"good", "hang", "crash", "garbage", "httperror", "sysexit"}  # optin is off by default
+
+
+def test_default_off_plugin_not_run_without_row(service, session_factory):
+    all_pid = add_profile(session_factory, [])
+    with session_factory() as s:
+        assert "optin" not in {i.name for i in service.effective_plugins(s, s.get(SearchProfile, all_pid))}
+        s.add(PluginSetting(plugin="optin", enabled=True, settings={}))
+        s.commit()
+    with session_factory() as s:
+        assert "optin" in {i.name for i in service.effective_plugins(s, s.get(SearchProfile, all_pid))}
+    assert service.start_runs([all_pid], RunTrigger.manual)
+    assert service.wait_idle(60)
+    assert runs(session_factory)["optin"].status == RunStatus.ok
 
 
 def test_none_starts_all_enabled_profiles(service, session_factory):

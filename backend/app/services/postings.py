@@ -37,7 +37,7 @@ def fetch_from_url(
     url = url.strip()
     info = registry.for_url(url)
     setting = session.get(PluginSetting, info.name) if info is not None else None
-    if info is None or (setting is not None and not setting.enabled):
+    if info is None or not (setting.enabled if setting is not None else info.enabled_by_default):
         raise NotFoundError("no_plugin_for_url", "No plugin can handle this URL", {"url": url})
     timeout, plugin_settings = split_timeout(info, setting.settings if setting is not None else None)
 
