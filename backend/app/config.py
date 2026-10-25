@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     pool_size: int = 2
     port: int = 8000
     frontend_dist: Path | None = None
+    update_check: bool = True
+    update_repo: str = "viktor-haag/ramen"
 
     @field_validator("plugin_dirs", mode="before")
     @classmethod

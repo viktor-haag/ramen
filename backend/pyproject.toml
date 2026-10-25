@@ -12,6 +12,7 @@ dependencies = [
     "apscheduler>=3.10,<4",
     "pebble",
     "httpx",
+    "packaging",
     "python-multipart",
     "anthropic==2.1.0",
     "openai==3.37.0",
