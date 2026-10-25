@@ -49,7 +49,7 @@ class SearchProfile(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     keywords: Mapped[list[str]] = mapped_column(JSON, default=list)
-    location: Mapped[str | None]
+    locations: Mapped[list[str]] = mapped_column(JSON, default=list)
     radius_km: Mapped[int | None]
     employment_type: Mapped[str | None]
     remote: Mapped[bool | None]

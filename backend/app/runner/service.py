@@ -22,19 +22,23 @@ log = logging.getLogger(__name__)
 
 
 def _profile_dtos(profile: SearchProfile) -> list[tuple[str, SearchProfileDTO]]:
-    """One plugin DTO per keyword (the plugin contract takes a single search term)."""
+    """One plugin DTO per keyword x city (the plugin contract takes one search term and one location).
+
+    The label names both parts (`"kw" @ City`); without cities it is just `"kw"`."""
+    cities: list[str | None] = list(profile.locations or []) or [None]
     return [
         (
-            keyword,
+            f'"{keyword}"' if city is None else f'"{keyword}" @ {city}',
             SearchProfileDTO(
                 keywords=keyword,
-                location=profile.location,
+                location=city,
                 radius_km=profile.radius_km,
                 employment_type=profile.employment_type,
                 remote=profile.remote,
             ),
         )
         for keyword in profile.keywords or []
+        for city in cities
     ]
 
 
@@ -43,16 +47,16 @@ Outcome = tuple[str, Future]
 
 @dataclass
 class _Aggregate:
-    """Per-keyword futures of one run, filled by pool callbacks (guarded by `_agg_lock`)."""
+    """Per-job (keyword x city) futures of one run, filled by pool callbacks (guarded by `_agg_lock`)."""
 
-    keywords: list[str]
+    labels: list[str]
     timeout: int
-    futures: list[Future | None] = field(init=False)  # positional: one slot per keyword
+    futures: list[Future | None] = field(init=False)  # positional: one slot per keyword x city
     remaining: int = field(init=False)
 
     def __post_init__(self) -> None:
-        self.futures = [None] * len(self.keywords)
-        self.remaining = len(self.keywords)
+        self.futures = [None] * len(self.labels)
+        self.remaining = len(self.labels)
 
 
 class RunService:
@@ -154,7 +158,7 @@ class RunService:
                 self._pending.add(run_id)
             # register before the first submit: its callback may fire inline
             with self._agg_lock:
-                self._aggregates[run_id] = _Aggregate([keyword for keyword, _ in dtos], timeout)
+                self._aggregates[run_id] = _Aggregate([label for label, _ in dtos], timeout)
             for index, (_, dto) in enumerate(dtos):
                 try:
                     self._start_keyword(run_id, index, info, dto, plugin_settings, timeout)
@@ -234,7 +238,7 @@ class RunService:
             if aggregate.remaining:
                 return
             del self._aggregates[run_id]
-        outcomes: list[Outcome] = list(zip(aggregate.keywords, aggregate.futures))
+        outcomes: list[Outcome] = list(zip(aggregate.labels, aggregate.futures))
         self._finish(run_id, outcomes, aggregate.timeout)
 
     def _finish(self, run_id: int, outcomes: list[Outcome], timeout: int) -> None:
@@ -272,21 +276,21 @@ class RunService:
             failures: list[tuple[str, BaseException]] = []
             succeeded = False
             problems: list[str] = []
-            for keyword, future in outcomes:
+            for label, future in outcomes:
                 try:
                     items.extend(future.result())
                     succeeded = True
                 except BaseException as exc:  # never let a BaseException leave a run `running`
-                    failures.append((keyword, exc))
+                    failures.append((label, exc))
                     if isinstance(exc, PluginFailure):
                         log.warning(
-                            "Search run %s (%s), keyword %r failed: %s\n%s",
-                            run_id, run.plugin, keyword, exc.summary, exc.traceback_text,
+                            "Search run %s (%s), %s failed: %s\n%s",
+                            run_id, run.plugin, label, exc.summary, exc.traceback_text,
                         )
                     else:
                         log.warning(
-                            "Search run %s (%s), keyword %r failed: %s",
-                            run_id, run.plugin, keyword, failure_text(exc, timeout), exc_info=exc,
+                            "Search run %s (%s), %s failed: %s",
+                            run_id, run.plugin, label, failure_text(exc, timeout), exc_info=exc,
                         )
             if succeeded:
                 profile = session.get(SearchProfile, run.profile_id) if run.profile_id else None
@@ -303,7 +307,7 @@ class RunService:
             if failures:
                 first = failures[0][1]
                 run.status = RunStatus.timeout if isinstance(first, TimeoutError) else RunStatus.error
-                problems.extend(f'"{keyword}": {failure_text(exc, timeout)}' for keyword, exc in failures)
+                problems.extend(f'{label}: {failure_text(exc, timeout)}' for label, exc in failures)
             if problems:
                 run.error = "; ".join(problems)
             run.finished_at = now

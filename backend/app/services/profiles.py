@@ -32,7 +32,7 @@ def _last_run_at(session: Session, profile_ids: list[int]) -> dict:
 
 def _out(profile: SearchProfile, last_run_at) -> ProfileOut:
     return ProfileOut(
-        id=profile.id, name=profile.name, keywords=list(profile.keywords or []), location=profile.location,
+        id=profile.id, name=profile.name, keywords=list(profile.keywords or []), locations=list(profile.locations or []),
         radius_km=profile.radius_km, employment_type=profile.employment_type, remote=profile.remote,
         enabled=profile.enabled, schedule_hours=profile.schedule_hours,
         plugins=list(profile.plugins or []), last_run_at=last_run_at,

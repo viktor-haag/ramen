@@ -9,7 +9,7 @@ def make_profile(client, **kw) -> dict:
 
 
 def test_profile_crud(client):
-    created = make_profile(client, location="Berlin", radius_km=30, schedule_hours=6)
+    created = make_profile(client, locations=["Berlin"], radius_km=30, schedule_hours=6)
     assert created["id"] and created["enabled"] is True and created["last_run_at"] is None
     pid = created["id"]
 

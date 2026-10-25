@@ -1,9 +1,11 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 MAX_KEYWORDS = 20
 MAX_KEYWORD_LENGTH = 100
+MAX_LOCATIONS = 20
+MAX_LOCATION_LENGTH = 100
 
 
 def normalize_keywords(values: list[str]) -> list[str]:
@@ -18,10 +20,15 @@ def normalize_keywords(values: list[str]) -> list[str]:
     return result
 
 
+def normalize_locations(values: list[str]) -> list[str]:
+    """Same rules as the keywords: trim, drop blanks and case-insensitive duplicates."""
+    return normalize_keywords(values)
+
+
 class _ProfileBase(BaseModel):
     name: str = Field(min_length=1)
     keywords: list[str]
-    location: str | None = None
+    locations: list[str] = Field(default_factory=list)
     radius_km: int | None = None
     employment_type: str | None = None
     remote: bool | None = None
@@ -42,6 +49,23 @@ class ProfileIn(_ProfileBase):
         if any(len(w) > MAX_KEYWORD_LENGTH for w in words):
             raise ValueError(f"keywords may have at most {MAX_KEYWORD_LENGTH} characters")
         return words
+
+
+    @field_validator("locations")
+    @classmethod
+    def _check_locations(cls, values: list[str]) -> list[str]:
+        cities = normalize_locations(values)
+        if len(cities) > MAX_LOCATIONS:
+            raise ValueError(f"at most {MAX_LOCATIONS} cities are allowed")
+        if any(len(c) > MAX_LOCATION_LENGTH for c in cities):
+            raise ValueError(f"cities may have at most {MAX_LOCATION_LENGTH} characters")
+        return cities
+
+    @model_validator(mode="after")
+    def _radius_needs_city(self) -> "ProfileIn":
+        if not self.locations:
+            self.radius_km = None
+        return self
 
 
 class ProfileOut(_ProfileBase):

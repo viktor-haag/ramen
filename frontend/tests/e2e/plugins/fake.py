@@ -20,7 +20,8 @@ class FakeExtractor(Extractor):
 
     def search(self, profile: SearchProfileDTO, settings) -> list[JobPosting]:
         kw = profile.keywords
-        return [_posting(f"{kw}-{i}", f"{kw} job {i}", f"https://fake.test/job/{kw}-{i}") for i in range(1, 6)]
+        where = f" @ {profile.location}" if profile.location else ""
+        return [_posting(f"{kw}-{i}", f"{kw} job {i}{where}", f"https://fake.test/job/{kw}-{i}") for i in range(1, 6)]
 
     def fetch(self, url: str, settings) -> JobPosting:
         # The external id follows the URL, so every URL yields its own posting.
