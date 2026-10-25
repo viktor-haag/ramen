@@ -93,3 +93,17 @@ def test_profile_generate_uses_custom_prompt(client, profile_llm):
     assert client.post("/api/me/profile/generate").status_code == 200
     system = profile_llm.calls[-1][0]
     assert system.startswith("Be terse.") and "## Gaps" in system
+
+
+def test_text_is_trimmed_before_storing(client):
+    r = client.put("/api/prompts/fit", json={"text": "  Be strict.\n\n"})
+    assert r.status_code == 200 and r.json()["text"] == "Be strict."
+    # the length limit applies to the trimmed text
+    assert client.put("/api/prompts/fit", json={"text": "x" * 20_000 + "   "}).status_code == 200
+    assert client.put("/api/prompts/fit", json={"text": "  " + "x" * 20_001}).status_code == 422
+
+
+def test_api_default_text_with_trailing_whitespace_is_not_customized(client):
+    default = client.get("/api/prompts").json()[0]["default_text"]
+    r = client.put("/api/prompts/fit", json={"text": default + "\n  "})
+    assert r.status_code == 200 and r.json()["customized"] is False

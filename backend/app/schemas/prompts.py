@@ -17,8 +17,9 @@ class PromptIn(BaseModel):
     @field_validator("text")
     @classmethod
     def _text(cls, value: str) -> str:
-        if not value.strip():
+        text = value.strip()
+        if not text:
             raise ValueError("text must not be blank")
-        if len(value) > MAX_PROMPT_CHARS:
+        if len(text) > MAX_PROMPT_CHARS:
             raise ValueError(f"text must be at most {MAX_PROMPT_CHARS} characters")
-        return value
+        return text
