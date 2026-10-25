@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import type { DailyLimitKind, LlmConfigOut, UsageTotals } from "@/api/types";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import LlmConfigDialog from "@/components/LlmConfigDialog.vue";
+import PromptsCard from "@/components/PromptsCard.vue";
 import { useLlmStore, type TestResult } from "@/stores/llm";
 import { useNotifyStore } from "@/stores/notify";
 
@@ -173,6 +174,8 @@ const usageRows = computed(() => {
       <v-btn color="primary" variant="flat" :loading="savingPurposes" data-test="llm-purposes-save" @click="savePurposes">{{ t("common.save") }}</v-btn>
     </v-card-actions>
   </v-card>
+
+  <PromptsCard />
 
   <v-card class="mb-4" :title="t('ai.fit.title')" data-test="llm-fit">
     <v-card-text>

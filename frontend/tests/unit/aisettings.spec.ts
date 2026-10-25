@@ -45,6 +45,7 @@ beforeEach(() => {
   settings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true };
   usageData = usage();
   get.mockImplementation(async (path: string) => {
+    if (path === "/prompts") return [] as never;
     if (path === "/llm/configs") return configs as never;
     if (path === "/llm/purposes") return purposes as never;
     if (path === "/settings") return settings as never;

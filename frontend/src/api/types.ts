@@ -439,3 +439,13 @@ export interface ErrorBody {
   params?: Record<string, unknown>;
   detail?: unknown;
 }
+
+export type PromptPurpose = "fit" | "profile" | "extraction";
+
+export interface PromptOut {
+  purpose: PromptPurpose;
+  text: string;
+  default_text: string;
+  fixed_text: string;
+  customized: boolean;
+}

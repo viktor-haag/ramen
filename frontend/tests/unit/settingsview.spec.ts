@@ -33,6 +33,7 @@ beforeEach(() => {
   put.mockReset();
   get.mockImplementation(async (path: string) => {
     if (path === "/plugins") return plugins as never;
+    if (path === "/prompts") return [] as never;
     if (path === "/llm/configs") return [] as never;
     if (path === "/llm/purposes") return { profile: null, fit: null, extraction: null } as never;
     if (path === "/settings") return { fit_auto: false, fit_concurrency: 2, daily_limit_kind: "none", daily_limit_value: null } as never;

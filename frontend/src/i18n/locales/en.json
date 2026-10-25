@@ -438,6 +438,22 @@
   "confirm": {
     "word": "DELETE"
   },
+  "prompts": {
+    "title": "Prompts",
+    "hint": "Instructions sent to the model. Only the editable part can be changed.",
+    "tabs": {
+      "fit": "Fit rating",
+      "profile": "Profile creation",
+      "extraction": "Text recognition"
+    },
+    "fixed": "Always appended",
+    "languageLine": "(language instruction)",
+    "customized": "customized",
+    "reset": "Reset to default",
+    "resetConfirm": "Discard your own prompt and use the default?",
+    "resetTitle": "Reset prompt",
+    "text": "Prompt text"
+  },
   "ai": {
     "title": "AI settings",
     "configs": "LLM configurations",

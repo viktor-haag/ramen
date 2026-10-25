@@ -438,6 +438,22 @@
   "confirm": {
     "word": "LÖSCHEN"
   },
+  "prompts": {
+    "title": "Prompts",
+    "hint": "Anweisungen an das Modell. Nur der editierbare Teil lässt sich ändern.",
+    "tabs": {
+      "fit": "Fit-Bewertung",
+      "profile": "Profilerstellung",
+      "extraction": "Texterkennung"
+    },
+    "fixed": "Wird immer angehängt",
+    "languageLine": "(Sprachvorgabe der Bewertung)",
+    "customized": "angepasst",
+    "reset": "Auf Standard zurücksetzen",
+    "resetConfirm": "Eigenen Prompt verwerfen und den Standard verwenden?",
+    "resetTitle": "Prompt zurücksetzen",
+    "text": "Prompt-Text"
+  },
   "ai": {
     "title": "KI-Einstellungen",
     "configs": "LLM-Konfigurationen",
