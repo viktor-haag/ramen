@@ -20,6 +20,7 @@ dependencies = [
     "pypdf==6.21.2",  # local PDF text extraction
     "pypdfium2==5.14.0",  # renders scanned PDF pages for LLM transcription
     "pillow==13.0.0",  # PNG/JPEG encoding and downscaling
+    "openpyxl==3.1.5",  # CSV/XLSX export of applications
     "tzdata",  # zoneinfo data on Windows (Europe/Berlin day boundary)
 ]
 

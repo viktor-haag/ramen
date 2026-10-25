@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.db import get_session
 from app.models import AppStatus
+from app.models.posting import utcnow
 from app.schemas.application import (
     ApplicationDetailOut,
     ApplicationOut,
@@ -13,6 +14,8 @@ from app.schemas.application import (
     StatusChangeIn,
 )
 from app.services import applications as svc
+from app.services import export
+from app.services.usage import BERLIN
 
 router = APIRouter()
 
@@ -24,6 +27,30 @@ def list_applications(
     session: Session = Depends(get_session),
 ) -> list[ApplicationOut]:
     return svc.applications_out(session, svc.list_applications(session, status, q))
+
+
+@router.get("/applications/export")
+def export_applications(
+    format: Literal["csv", "xlsx"],
+    status: Annotated[list[AppStatus] | None, Query()] = None,
+    q: str | None = None,
+    lang: Literal["de", "en"] = "de",
+    session: Session = Depends(get_session),
+) -> Response:
+    now = utcnow()
+    rows = export.export_rows(session, status, q, now, lang)
+    if format == "csv":
+        content, media_type = export.to_csv(rows, lang), "text/csv; charset=utf-8"
+    else:
+        content = export.to_xlsx(rows, lang)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    stem = "ramen-bewerbungen" if lang == "de" else "ramen-applications"
+    filename = f"{stem}-{now.astimezone(BERLIN).date().isoformat()}.{format}"
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/applications/{app_id}", response_model=ApplicationDetailOut)
