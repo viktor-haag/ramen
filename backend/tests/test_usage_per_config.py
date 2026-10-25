@@ -238,3 +238,40 @@ def test_migration_0005(tmp_path):
     cols = {c["name"] for c in inspect(engine).get_columns("llm_config")}
     assert "daily_limit_kind" not in cols and "daily_limit_value" not in cols
     engine.dispose()
+
+
+def test_single_actions_report_config_limit_when_global_is_fine(client, app, monkeypatch):
+    from app.llm.base import LLMResult, Message
+    from app.llm.runner import llm_call
+
+    fake = FakeEval()
+    q = FitQueue(app.state.session_factory, evaluate=fake)
+    original, app.state.fit_queue = app.state.fit_queue, q
+    try:
+        cfg = _post_config(client, "Claude", daily_limit_kind="tokens", daily_limit_value=100)
+        assert client.put("/api/llm/purposes", json={"profile": cfg["id"], "fit": cfg["id"], "extraction": cfg["id"]}).status_code == 200
+        ids = _seed_fit(app)
+        sf = app.state.session_factory
+        with sf() as s:
+            set_global(s, "tokens", 1_000_000)  # global limit far away
+            add_usage(s, datetime.now(UTC), cfg["id"], i=40)
+        r = client.post(f"/api/fit/{ids[0]}")
+        assert r.status_code == 200 and r.json()["limit_exceeded"] is False
+        assert q.wait_idle(TIMEOUT)
+        with sf() as s:
+            add_usage(s, datetime.now(UTC), cfg["id"], i=100)  # config limit reached, global fine
+            assert usage.limit_status(s, datetime.now(UTC), cfg["id"]) == LimitHit("config", "Claude")
+        r = client.post(f"/api/fit/{ids[1]}")
+        assert r.status_code == 200 and r.json()["limit_exceeded"] is True
+        assert q.wait_idle(TIMEOUT)
+
+        class _Client:
+            def complete(self, system, messages, *, json_schema=None, max_tokens=4096):
+                return LLMResult("ok", 1, 1, False)
+
+        monkeypatch.setattr("app.llm.runner.make_client", lambda cfg, **_: _Client())
+        result, exceeded = llm_call(sf, "profile", lambda c: ("sys", [Message("user", ["hi"])]))
+        assert result.text == "ok" and exceeded is True
+    finally:
+        q.shutdown()
+        app.state.fit_queue = original
