@@ -90,6 +90,7 @@ The app then runs at http://localhost:8000, data is stored in `./data`.
 
 To build the image from your local source instead of downloading it, run `docker compose build` before
 `docker compose up -d`. The local build replaces the downloaded `latest` image until the next `docker compose pull`.
+As long as no release has been published yet, `docker compose pull` fails; build locally instead.
 
 ## Configuration
 

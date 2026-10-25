@@ -4,6 +4,7 @@
     ".": {
       "release-type": "simple",
       "package-name": "ramen",
+      "initial-version": "0.1.0",
       "changelog-path": "CHANGELOG.md",
       "bump-minor-pre-major": true,
       "include-v-in-tag": true,

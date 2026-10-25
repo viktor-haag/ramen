@@ -14,6 +14,9 @@ from app.runner.scheduler import SchedulerManager
 from app.services.updates import UpdateChecker
 from app.version import __version__
 
+# always newer than the running version, so the tests survive release-please bumps
+NEWER = f"{int(__version__.split('.')[0]) + 1}.0.0"
+
 FAKE_PLUGINS = Path(__file__).parent / "fake_plugins"
 REPO = "viktor-haag/ramen"
 
@@ -28,8 +31,8 @@ class Recorder:
         return httpx.Response(
             200,
             json={
-                "tag_name": "v0.2.0",
-                "html_url": f"https://github.com/{REPO}/releases/tag/v0.2.0",
+                "tag_name": f"v{NEWER}",
+                "html_url": f"https://github.com/{REPO}/releases/tag/v{NEWER}",
                 "published_at": "2026-10-24T08:30:00Z",
             },
         )
@@ -59,7 +62,7 @@ def test_version_get_before_check(tmp_path):
     with TestClient(make_app(tmp_path, rec)) as c:
         body = c.get("/api/version").json()
     assert body == {
-        "current": "0.1.0", "latest": None, "update_available": False, "release_url": None,
+        "current": __version__, "latest": None, "update_available": False, "release_url": None,
         "published_at": None, "checked_at": None, "error": None, "enabled": True, "disabled_by_env": False,
     }
     assert rec.requests == []
@@ -70,8 +73,8 @@ def test_check_now_reports_update(tmp_path):
         r = c.post("/api/version/check")
         assert r.status_code == 200
         body = r.json()
-        assert body["update_available"] is True and body["latest"] == "0.2.0"
-        assert body["release_url"].endswith("/v0.2.0") and body["checked_at"] and body["error"] is None
+        assert body["update_available"] is True and body["latest"] == NEWER
+        assert body["release_url"].endswith(f"/v{NEWER}") and body["checked_at"] and body["error"] is None
         assert c.get("/api/version").json() == body
 
 
@@ -110,7 +113,7 @@ def test_setting_off_skips_scheduled_check(tmp_path):
         c.put("/api/settings", json={**SETTINGS_BODY, "update_check": True})
         app.state.run_update_check()
         assert len(rec.requests) == 1
-        assert c.get("/api/version").json()["latest"] == "0.2.0"
+        assert c.get("/api/version").json()["latest"] == NEWER
 
 
 def test_scheduled_job_never_raises(tmp_path):
@@ -140,7 +143,7 @@ def test_manual_check_works_with_setting_off(tmp_path):
     with TestClient(make_app(tmp_path, rec)) as c:
         c.put("/api/settings", json={**SETTINGS_BODY, "update_check": False})
         r = c.post("/api/version/check")
-        assert r.status_code == 200 and r.json()["latest"] == "0.2.0"
+        assert r.status_code == 200 and r.json()["latest"] == NEWER
         assert r.json()["enabled"] is False
     assert len(rec.requests) == 1
 
