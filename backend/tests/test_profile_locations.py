@@ -125,3 +125,14 @@ def test_error_text_without_city_unchanged(session_factory, registry):
     assert service.wait_idle(5)
     [run] = all_runs(session_factory)
     assert run.error == '"py": ValueError: boom'
+
+
+def test_legacy_location_string_is_kept_as_one_city(client):
+    res = _post(client, location=" Berlin ", radius_km=25)
+    assert res.status_code == 200, res.text
+    assert res.json()["locations"] == ["Berlin"] and res.json()["radius_km"] == 25
+    blank = _post(client, location="  ", radius_km=25)
+    assert blank.json()["locations"] == [] and blank.json()["radius_km"] is None
+    # an explicit list wins over the legacy field
+    both = _post(client, location="Berlin", locations=["Köln"])
+    assert both.json()["locations"] == ["Köln"]

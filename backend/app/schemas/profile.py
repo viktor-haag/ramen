@@ -38,6 +38,16 @@ class _ProfileBase(BaseModel):
 
 
 class ProfileIn(_ProfileBase):
+    @model_validator(mode="before")
+    @classmethod
+    def _legacy_location(cls, data: object) -> object:
+        """Old clients send a single `location` string: keep it as the one city instead of dropping it."""
+        if isinstance(data, dict) and "locations" not in data:
+            legacy = data.get("location")
+            if isinstance(legacy, str) and legacy.strip():
+                data = {**data, "locations": [legacy]}
+        return data
+
     @field_validator("keywords")
     @classmethod
     def _check_keywords(cls, values: list[str]) -> list[str]:
@@ -49,7 +59,6 @@ class ProfileIn(_ProfileBase):
         if any(len(w) > MAX_KEYWORD_LENGTH for w in words):
             raise ValueError(f"keywords may have at most {MAX_KEYWORD_LENGTH} characters")
         return words
-
 
     @field_validator("locations")
     @classmethod
