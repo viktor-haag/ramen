@@ -28,7 +28,7 @@ from app.llm.base import ImagePart, Message
 from app.llm.factory import ConfigData
 from app.llm.runner import run_call
 from app.models import DocumentKind, ProfileDocument, TextSource, UserProfile
-from app.services import attachments, llm_configs
+from app.services import attachments, llm_configs, prompts
 
 Image.MAX_IMAGE_PIXELS = 50_000_000  # Pillow refuses (DecompressionBombError) above twice this
 PDF_TEXT_MIN_CHARS_PER_PAGE = 50
@@ -39,7 +39,6 @@ MAX_IMAGE_BYTES = 4 * 1024 * 1024
 JPEG_QUALITY = 85
 EXTRACTION_MAX_TOKENS = 8192
 _PDFIUM_LOCK = threading.Lock()  # pdfium is not thread-safe; sync endpoints run in a threadpool
-EXTRACTION_SYSTEM = "Transcribe all text faithfully; keep structure as plain text; no commentary."
 EXTRACTION_REQUEST = "Transcribe the attached document."
 PROFILE_ID = 1
 
@@ -285,6 +284,7 @@ def extract_with_llm(
             )
         kind, mime = doc.kind, doc.mime
         cfg = llm_configs.resolve(session, "extraction")
+        system = prompts.system_prompt(session, "extraction")
     if not cfg.supports_images:
         raise ConflictError(
             "llm_no_image_support", "The extraction LLM configuration does not support images", {"name": cfg.name}
@@ -292,7 +292,7 @@ def extract_with_llm(
 
     def build(_cfg: ConfigData) -> tuple[str, list[Message]]:
         images = _images_for(kind, path, mime, doc_id)
-        return EXTRACTION_SYSTEM, [Message("user", [EXTRACTION_REQUEST, *images])]
+        return system, [Message("user", [EXTRACTION_REQUEST, *images])]
 
     result, exceeded = run_call(
         session_factory, cfg, "extraction", build, max_tokens=EXTRACTION_MAX_TOKENS

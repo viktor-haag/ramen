@@ -368,6 +368,7 @@
     "llm_unavailable": "Der LLM-Anbieter ist nicht erreichbar: {reason}",
     "llm_timeout": "Der LLM-Anbieter hat nicht rechtzeitig geantwortet: {reason}",
     "llm_invalid_output": "Das LLM hat eine unbrauchbare Antwort geliefert: {reason}",
+    "prompt_not_found": "Diesen Prompt gibt es nicht.",
     "profile_missing": "Es gibt noch nichts, woraus ein Profil erstellt werden könnte. Lade zuerst eine Unterlage hoch oder schreibe einen Freitext.",
     "profile_edited": "Du hast das Profil manuell bearbeitet. Beim Neu-Erstellen werden deine Änderungen ersetzt.",
     "daily_limit_reached": "Das Tageslimit für die LLM-Nutzung ist erreicht. Es wurde nichts eingereiht."

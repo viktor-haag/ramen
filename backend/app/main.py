@@ -21,6 +21,7 @@ from app.api import (
     plugins,
     postings,
     profiles,
+    prompts as prompts_api,
     runs,
     settings as settings_api,
     version as version_api,
@@ -120,6 +121,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(llm.router, prefix="/api")
     app.include_router(me.router, prefix="/api")
+    app.include_router(prompts_api.router, prefix="/api")
     app.include_router(settings_api.router, prefix="/api")
     app.include_router(version_api.router, prefix="/api")
 

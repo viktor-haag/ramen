@@ -6,7 +6,7 @@ from app.errors import ConflictError, NotFoundError, UpstreamError
 from app.llm.base import LLMResult
 from app.llm.errors import LLMError
 from app.models import Posting, UserProfile
-from app.services import fit
+from app.services import fit, prompts
 from test_profile_docs import add_config
 
 PROFILE = "## Summary\nBackend engineer.\n\n## Constraints\nRemote only."
@@ -63,7 +63,7 @@ def seed(app, markdown=PROFILE, version=3, **posting):
 
 
 def build(posting, lang="en"):
-    return fit.build_messages(PROFILE, posting, lang)
+    return fit.build_messages(PROFILE, posting, lang, prompts.default_text("fit"))
 
 
 def test_prompt_contains_profile_and_posting_fields():

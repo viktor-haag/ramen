@@ -368,6 +368,7 @@
     "llm_unavailable": "The LLM provider is not reachable: {reason}",
     "llm_timeout": "The LLM provider did not answer in time: {reason}",
     "llm_invalid_output": "The LLM returned an unusable answer: {reason}",
+    "prompt_not_found": "That prompt does not exist.",
     "profile_missing": "There is nothing to build a profile from yet. Add a document or write a free text first.",
     "profile_edited": "You have edited the profile manually. Regenerating replaces your changes.",
     "daily_limit_reached": "The daily limit for LLM usage has been reached. Nothing was queued."
