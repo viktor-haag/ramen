@@ -15,6 +15,7 @@ class FakeExtractor(Extractor):
     name = "fake"
     display_name = "Fake"
     capabilities = {Capability.SEARCH, Capability.FETCH}
+    start_spacing_seconds = (0.0, 0.0)  # e2e runs must not wait between keyword starts
     url_patterns = [r"https://fake\.test/.*"]
 
     def search(self, profile: SearchProfileDTO, settings) -> list[JobPosting]:

@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from app.db import Base, make_engine, make_session_factory
 from app.db_migrate import upgrade
 from app.main import create_app
 from app.models import PluginSetting, Posting, RunStatus, RunTrigger, SearchProfile, SearchRun
+from app.plugins.base import SearchProfileDTO
 from app.plugins.loader import discover_plugins
 from app.plugins.registry import PluginRegistry
 from app.runner.pool import RunnerPool
@@ -173,7 +175,7 @@ def test_effective_plugins(service, session_factory):
     with session_factory() as s:
         names = {i.name for i in service.effective_plugins(s, s.get(SearchProfile, all_pid))}
     # empty list = all usable SEARCH plugins; broken (error) is excluded
-    assert names == {"good", "hang", "crash", "garbage"}
+    assert names == {"good", "hang", "crash", "garbage", "httperror"}
 
 
 def test_none_starts_all_enabled_profiles(service, session_factory):
@@ -262,3 +264,66 @@ def test_hook_runs_outside_db_lock(session_factory, registry, pool):
     service.start_runs([pid], RunTrigger.manual)
     assert service.wait_idle(30)
     assert held == [False]
+
+
+def test_http_error_from_plugin_is_reported_readably(service, session_factory, caplog):
+    # httpx.HTTPStatusError does not unpickle; it used to surface as "BrokenProcessPool: Unpicklable object"
+    pid = add_profile(session_factory, ["httperror"])
+    service.start_runs([pid], RunTrigger.manual)
+    assert service.wait_idle(30)
+    run = runs(session_factory)["httperror"]
+    assert run.status == RunStatus.error
+    assert run.error == '"py": HTTP 429 Too Many Requests (api.example.test)'
+    assert "httperror" in caplog.text and "HTTPStatusError" in caplog.text  # full traceback in the log
+
+
+def test_pool_recovers_after_it_stopped(registry):
+    p = RunnerPool(1)
+    try:
+        p._pool.stop()
+        p._pool.join()
+        future = p.submit(registry.get("good"), SearchProfileDTO(keywords="py"), {}, 30)
+        assert len(future.result(timeout=60)) == 4
+    finally:
+        p.close()
+
+
+class ScriptedSpacer:
+    def __init__(self, delays: list[float]):
+        self.delays = list(delays)
+        self.calls: list[tuple[str, tuple[float, float]]] = []
+
+    def delay(self, key: str, gap: tuple[float, float]) -> float:
+        self.calls.append((key, gap))
+        return self.delays.pop(0)
+
+
+def test_keyword_starts_are_spaced_per_source(session_factory, registry, pool):
+    spacer = ScriptedSpacer([0.0, 1.5])
+    svc = RunService(session_factory, registry, pool, spacer=spacer)
+    with session_factory() as s:
+        p = SearchProfile(name="p", keywords=["py", "go"], plugins=["good"])
+        s.add(p)
+        s.commit()
+        pid = p.id
+    started = time.monotonic()
+    svc.start_runs([pid], RunTrigger.manual)
+    assert svc.wait_idle(30)
+    assert time.monotonic() - started >= 1.5
+    assert spacer.calls == [("good", (0.0, 0.0)), ("good", (0.0, 0.0))]  # gap from the plugin class
+    assert runs(session_factory)["good"].status == RunStatus.ok
+
+
+def test_close_cancels_delayed_starts(session_factory, registry, pool):
+    svc = RunService(session_factory, registry, pool, spacer=ScriptedSpacer([0.0, 300.0]))
+    with session_factory() as s:
+        p = SearchProfile(name="p", keywords=["py", "go"], plugins=["good"])
+        s.add(p)
+        s.commit()
+        pid = p.id
+    svc.start_runs([pid], RunTrigger.manual)
+    svc.close()
+    assert svc.wait_idle(30)
+    run = runs(session_factory)["good"]
+    assert run.status == RunStatus.error
+    assert run.error == '"go": Run cancelled'

@@ -33,6 +33,7 @@ from app.fit.queue import FitQueue
 from app.plugins.loader import discover_plugins
 from app.plugins.registry import PluginRegistry
 from app.runner.pool import RunnerPool
+from app.runner.spacing import StartSpacer
 from app.runner.scheduler import SchedulerManager
 from app.runner.service import RunService
 from app.services import settings as settings_service
@@ -60,7 +61,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         pool = RunnerPool(settings.pool_size)  # workers start lazily on the first run
         app.state.runner_pool = pool
         app.state.run_service = RunService(
-            app.state.session_factory, app.state.registry, pool, on_new_postings=fit_queue.enqueue_auto
+            app.state.session_factory, app.state.registry, pool,
+            on_new_postings=fit_queue.enqueue_auto, spacer=StartSpacer(),
         )
         with app.state.session_factory() as session:
             app.state.run_service.recover_stale_runs(session)
@@ -75,6 +77,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             yield
         finally:
             scheduler.shutdown()
+            app.state.run_service.close()
             pool.close()
             fit_queue.shutdown()
             engine.dispose()

@@ -18,6 +18,7 @@ class GoodExtractor(Extractor):
     name = "good"
     display_name = "Good"
     capabilities = {Capability.SEARCH, Capability.FETCH}
+    start_spacing_seconds = (0.0, 0.0)
     url_patterns = [r"https://good\.test/.*"]
     settings_schema = GoodSettings
 

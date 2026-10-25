@@ -52,6 +52,8 @@ class Extractor(ABC):
     url_patterns: ClassVar[list[str]] = []
     settings_schema: ClassVar[type[BaseModel]] = EmptySettings
     timeout_seconds: ClassVar[int] = 120
+    # random pause (min, max seconds) between consecutive search starts against this source
+    start_spacing_seconds: ClassVar[tuple[float, float]] = (2.0, 6.0)
 
     def search(self, profile: SearchProfileDTO, settings: BaseModel) -> list[JobPosting]:
         raise NotImplementedError

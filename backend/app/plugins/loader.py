@@ -23,6 +23,7 @@ class PluginInfo:
     module_path: str
     class_name: str
     error: str | None = None
+    start_spacing: tuple[float, float] = (2.0, 6.0)
 
 
 def _import_file(path: Path, stem: str):
@@ -99,6 +100,7 @@ def _build_info(cls: type[Extractor], path: Path) -> PluginInfo:
         timeout_seconds=cls.timeout_seconds,
         module_path=str(path),
         class_name=cls.__name__,
+        start_spacing=tuple(float(v) for v in cls.start_spacing_seconds),
     )
 
 

@@ -1,7 +1,7 @@
 import logging
 import threading
 from collections.abc import Callable
-from concurrent.futures import Future, TimeoutError
+from concurrent.futures import CancelledError, Future, TimeoutError
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -13,8 +13,9 @@ from app.models.posting import utcnow
 from app.plugins.base import Capability, SearchProfileDTO
 from app.plugins.loader import PluginInfo
 from app.plugins.registry import PluginRegistry
-from app.runner.failures import describe, failure_text, split_timeout
+from app.runner.failures import PluginFailure, describe, failure_text, split_timeout
 from app.runner.pool import RunnerPool
+from app.runner.spacing import StartSpacer
 from app.services.ingest import ingest
 
 log = logging.getLogger(__name__)
@@ -72,6 +73,7 @@ class RunService:
         clock: Callable[[], datetime] = utcnow,
         *,
         on_new_postings: Callable[[list[int]], None] | None = None,
+        spacer: StartSpacer | None = None,
     ):
         self._session_factory = session_factory
         self._registry = registry
@@ -83,6 +85,9 @@ class RunService:
         self._aggregates: dict[int, _Aggregate] = {}
         self._idle = threading.Condition()
         self._pending: set[int] = set()
+        self._spacer = spacer  # None: submit every keyword at once (tests)
+        self._waiting: dict[object, tuple[threading.Timer, tuple]] = {}  # delayed keyword starts
+        self._closed = False
 
     @property
     def db_lock(self) -> threading.Lock:
@@ -148,15 +153,53 @@ class RunService:
             with self._agg_lock:
                 self._aggregates[run_id] = _Aggregate([keyword for keyword, _ in dtos], timeout)
             for index, (_, dto) in enumerate(dtos):
-                try:
-                    future = self._pool.submit(info, dto, plugin_settings, timeout)
-                except Exception as exc:
-                    failed: Future = Future()
-                    failed.set_exception(exc)
-                    self._keyword_done(run_id, index, failed)
+                delay = self._spacer.delay(info.name, info.start_spacing) if self._spacer else 0.0
+                args = (run_id, index, info, dto, plugin_settings, timeout)
+                if delay <= 0:
+                    self._submit(*args)
                     continue
-                future.add_done_callback(lambda f, r=run_id, i=index: self._keyword_done(r, i, f))
+                token = object()
+                timer = threading.Timer(delay, self._delayed_submit, args=(token,))
+                timer.daemon = True
+                with self._agg_lock:
+                    closed = self._closed
+                    if not closed:
+                        self._waiting[token] = (timer, args)
+                if closed:
+                    self._fail_keyword(run_id, index, CancelledError())
+                else:
+                    timer.start()
         return run_ids
+
+    def _submit(
+        self, run_id: int, index: int, info: PluginInfo, dto: SearchProfileDTO, settings: dict, timeout: int
+    ) -> None:
+        try:
+            future = self._pool.submit(info, dto, settings, timeout)
+        except Exception as exc:
+            self._fail_keyword(run_id, index, exc)
+            return
+        future.add_done_callback(lambda f, r=run_id, i=index: self._keyword_done(r, i, f))
+
+    def _delayed_submit(self, token: object) -> None:
+        with self._agg_lock:
+            entry = self._waiting.pop(token, None)
+        if entry is not None:  # None: cancelled by close()
+            self._submit(*entry[1])
+
+    def _fail_keyword(self, run_id: int, index: int, exc: BaseException) -> None:
+        failed: Future = Future()
+        failed.set_exception(exc)
+        self._keyword_done(run_id, index, failed)
+
+    def close(self) -> None:
+        """Cancel keyword starts still waiting for their slot; their runs finish as cancelled."""
+        with self._agg_lock:
+            self._closed = True
+            waiting, self._waiting = self._waiting, {}
+        for timer, args in waiting.values():
+            timer.cancel()
+            self._fail_keyword(args[0], args[1], CancelledError())
 
     def _keyword_done(self, run_id: int, index: int, future: Future) -> None:
         """Pool callback per keyword: the last one of a run records the whole run."""
@@ -211,6 +254,16 @@ class RunService:
                     succeeded = True
                 except Exception as exc:
                     failures.append((keyword, exc))
+                    if isinstance(exc, PluginFailure):
+                        log.warning(
+                            "Search run %s (%s), keyword %r failed: %s\n%s",
+                            run_id, run.plugin, keyword, exc.summary, exc.traceback_text,
+                        )
+                    else:
+                        log.warning(
+                            "Search run %s (%s), keyword %r failed: %s",
+                            run_id, run.plugin, keyword, failure_text(exc, timeout), exc_info=exc,
+                        )
             if succeeded:
                 profile = session.get(SearchProfile, run.profile_id) if run.profile_id else None
                 if profile is None:
