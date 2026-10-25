@@ -484,6 +484,31 @@ describe("AiSettings", () => {
     w.unmount();
   });
 
+  it("notes that the total excludes configurations without prices, and shows cost unknown for deleted ones", async () => {
+    usageData = usage({
+      per_config: [
+        cu(),
+        cu({ config_id: 2, name: "Local", today: { input_tokens: 10, output_tokens: 5, eur: null }, month: { input_tokens: 20, output_tokens: 8, eur: null } }),
+        cu({ config_id: null, name: null, deleted: true, today: { input_tokens: 7, output_tokens: 3, eur: null }, month: { input_tokens: 70, output_tokens: 30, eur: null } }),
+      ],
+    });
+    const w = await mountSettings();
+    expect(q("[data-test=llm-usage-total-note]")!.textContent).toContain("excluding costs of configurations without prices");
+    expect(q("[data-test=llm-usage-row-2]")!.textContent).toContain("no prices set");
+    const deleted = q("[data-test=llm-usage-row-deleted]")!.textContent!;
+    expect(deleted).toContain("cost unknown");
+    expect(deleted).not.toContain("no prices set");
+    w.unmount();
+  });
+
+  it("shows no total note when every config with tokens has prices", async () => {
+    const zero = { input_tokens: 0, output_tokens: 0, eur: null };
+    usageData = usage({ per_config: [cu(), cu({ config_id: 2, name: "Idle", today: zero, month: zero })] });
+    const w = await mountSettings();
+    expect(q("[data-test=llm-usage-total-note]")).toBeNull();
+    w.unmount();
+  });
+
   it("shows a config limit as progress and marks an exceeded one red", async () => {
     usageData = usage({
       per_config: [

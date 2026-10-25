@@ -107,7 +107,7 @@ async function saveSettings() {
 const num = (n: number) => new Intl.NumberFormat(locale.value).format(n);
 const eur = (n: number) => new Intl.NumberFormat(locale.value, { style: "currency", currency: "EUR" }).format(n);
 const tokensText = (u: UsageTotals) => t("ai.usage.tokens", { input: num(u.input_tokens), output: num(u.output_tokens) });
-const eurText = (u: UsageTotals) => (u.eur === null ? t("ai.usage.noPrices") : eur(u.eur));
+const eurText = (u: UsageTotals, deleted = false) => (u.eur === null ? t(deleted ? "ai.usage.costUnknown" : "ai.usage.noPrices") : eur(u.eur));
 interface LimitView { used: string; limit: string; percent: number; exceeded: boolean }
 /** Progress of today's usage against a limit; null when there is no limit. */
 function limitView(today: UsageTotals, limit: { kind: DailyLimitKind; value: number | null }, exceeded: boolean): LimitView | null {
@@ -120,14 +120,19 @@ function limitView(today: UsageTotals, limit: { kind: DailyLimitKind; value: num
 const usageRows = computed(() => {
   const u = store.usage;
   if (!u) return [];
-  return u.per_config.map((c) => ({
+  return (u.per_config ?? []).map((c) => ({
     key: c.config_id === null ? "deleted" : String(c.config_id),
     name: c.deleted ? t("ai.usage.deleted") : (c.name ?? ""),
+    deleted: c.deleted,
     today: c.today,
     month: c.month,
     limit: limitView(c.today, c.limit, c.limit_exceeded),
   }));
 });
+/** True when the euro total leaves out tokens of configurations that have no price. */
+const totalExcludesUnpriced = computed(() =>
+  (store.usage?.per_config ?? []).some((c) => [c.today, c.month].some((x) => x.input_tokens + x.output_tokens > 0 && x.eur === null)),
+);
 const totalRow = computed(() => {
   const u = store.usage;
   return u ? { today: u.today, month: u.month, limit: limitView(u.today, u.limit, u.limit_exceeded) } : null;
@@ -262,8 +267,8 @@ const totalRow = computed(() => {
           <tbody>
             <tr v-for="r in usageRows" :key="r.key" :data-test="`llm-usage-row-${r.key}`">
               <th class="text-left">{{ r.name }}</th>
-              <td class="text-no-wrap">{{ tokensText(r.today) }}<br />{{ eurText(r.today) }}</td>
-              <td class="text-no-wrap">{{ tokensText(r.month) }}<br />{{ eurText(r.month) }}</td>
+              <td class="text-no-wrap">{{ tokensText(r.today) }}<br />{{ eurText(r.today, r.deleted) }}</td>
+              <td class="text-no-wrap">{{ tokensText(r.month) }}<br />{{ eurText(r.month, r.deleted) }}</td>
               <td class="usage-limit">
                 <template v-if="r.limit">
                   <v-progress-linear :model-value="r.limit.percent" :color="r.limit.exceeded ? 'error' : 'primary'" :class="{ 'text-error': r.limit.exceeded }" height="6" rounded />
@@ -275,7 +280,10 @@ const totalRow = computed(() => {
           </tbody>
           <tfoot v-if="totalRow">
             <tr data-test="llm-usage-total" class="font-weight-bold">
-              <th class="text-left">{{ t("ai.usage.total") }}</th>
+              <th class="text-left">
+                {{ t("ai.usage.total") }}
+                <div v-if="totalExcludesUnpriced" class="text-caption font-weight-regular text-medium-emphasis" data-test="llm-usage-total-note">{{ t("ai.usage.totalExcludesUnpriced") }}</div>
+              </th>
               <td class="text-no-wrap">{{ tokensText(totalRow.today) }}<br />{{ eurText(totalRow.today) }}</td>
               <td class="text-no-wrap">{{ tokensText(totalRow.month) }}<br />{{ eurText(totalRow.month) }}</td>
               <td class="usage-limit">

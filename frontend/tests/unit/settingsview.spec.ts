@@ -40,7 +40,8 @@ beforeEach(() => {
     if (path === "/version") return { current: "0.1.0", latest: "0.1.0", update_available: false, release_url: null, published_at: null, checked_at: null, error: null, enabled: true, disabled_by_env: false } as never;
     if (path === "/llm/usage") {
       const zero = { input_tokens: 0, output_tokens: 0, eur: null };
-      return { today: zero, month: zero, limit: { kind: "none", value: null }, limit_exceeded: false } as never;
+      const config = { config_id: 1, name: "Main", deleted: false, today: zero, month: zero, limit: { kind: "none", value: null }, limit_exceeded: false };
+      return { today: zero, month: zero, limit: { kind: "none", value: null }, limit_exceeded: false, per_config: [config] } as never;
     }
     throw new Error(`unexpected GET ${path}`);
   });
