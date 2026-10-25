@@ -13,3 +13,4 @@ frontend/test-results
 frontend/playwright-report
 frontend/tests
 backend/tests
+.github

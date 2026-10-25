@@ -78,11 +78,18 @@ lives in the `data/` folder of the repository.
 
 ### Docker (alternative)
 
+A ready-made image for amd64 and arm64 (e.g. Raspberry Pi) is published as `ghcr.io/viktor-haag/ramen`.
+In the repository folder:
+
 ```
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 The app then runs at http://localhost:8000, data is stored in `./data`.
+
+To build the image from your local source instead of downloading it, run `docker compose build` before
+`docker compose up -d`. The local build replaces the downloaded `latest` image until the next `docker compose pull`.
 
 ## Configuration
 
@@ -94,6 +101,47 @@ Optional environment variables (the defaults work out of the box):
 | `JOBTRACKER_PLUGIN_DIRS` | `<repo>/plugins` | Plugin folders, several separated by `;` |
 | `JOBTRACKER_POOL_SIZE` | `2` | Number of searches that run in parallel |
 | `JOBTRACKER_FRONTEND_DIST` | – | Path to the built web interface (`frontend/dist`); without it only the API is served |
+| `JOBTRACKER_UPDATE_CHECK` | `true` | `false` switches off every update check, including **Check now** (see [Updates](#updates)) |
+| `JOBTRACKER_UPDATE_REPO` | `viktor-haag/ramen` | GitHub repository whose releases are checked for updates |
+
+With Docker, set variables in `docker-compose.yml` under the service, e.g.:
+
+```
+    environment:
+      JOBTRACKER_UPDATE_CHECK: "false"
+```
+
+## Updates
+
+RAMEN checks GitHub for a newer release shortly after it starts and then every 12 hours. Only the public release
+information of the repository is requested; nothing about you or your data is sent.
+
+- **Update chip:** when a newer version is available, an **Update X.Y.Z** chip appears in the app bar (only the icon on
+  narrow screens). It opens the release notes on GitHub. **×** hides the chip until an even newer version comes out.
+- **Settings → About RAMEN** shows the installed version, the latest release and when RAMEN last checked.
+  **Check now** checks immediately; **Check for updates automatically** switches the regular check on or off.
+- Updates are never installed automatically. Your data in `data/` is kept, and database migrations run on the next start.
+
+**Updating with Docker:**
+
+```
+docker compose pull
+docker compose up -d
+```
+
+If you build the image yourself: `git pull`, then `docker compose build` and `docker compose up -d`.
+
+**Updating with conda or venv:** stop the app, then in the repository folder:
+
+```
+git pull
+```
+
+Activate the Python environment and repeat the installation steps – `pip install -e ./backend` and, in `frontend/`,
+`npm ci` and `npm run build` – then start the app again.
+
+**Switching update checks off:** turn off **Check for updates automatically** in Settings → About RAMEN (manual checks
+still work), or set `JOBTRACKER_UPDATE_CHECK=false` to switch off every request to GitHub.
 
 ## Using the app
 

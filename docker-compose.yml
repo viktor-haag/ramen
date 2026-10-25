@@ -1,5 +1,6 @@
 services:
   jobtracker:
+    image: ghcr.io/viktor-haag/ramen:latest
     build: .
     ports:
       - "8000:8000"
