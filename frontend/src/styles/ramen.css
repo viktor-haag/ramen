@@ -49,6 +49,23 @@ h1 {
 .v-card-title {
   color: rgb(var(--v-theme-heading));
 }
+/* Phones: wrap long card titles instead of cutting them off with an ellipsis */
+@media (max-width: 599.98px) {
+  .v-card-title {
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  /* cards with a wide header action (e.g. "Add configuration"): action below the title */
+  .ramen-stack-append > .v-card-item {
+    grid-template-areas: "prepend content" "append append";
+    grid-template-columns: max-content 1fr;
+    row-gap: 8px;
+  }
+  .ramen-stack-append > .v-card-item > .v-card-item__append {
+    justify-self: start;
+    padding-inline-start: 0;
+  }
+}
 /* Big numbers (dashboard) */
 .ramen-stat {
   color: rgb(var(--v-theme-primary));

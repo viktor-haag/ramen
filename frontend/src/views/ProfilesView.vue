@@ -106,7 +106,7 @@ const scheduleText = (p: ProfileOut) => (p.schedule_hours ? t("profiles.schedule
         </template>
       </v-alert>
     </v-card-text>
-    <v-card-actions>
+    <v-card-actions class="flex-wrap ga-1">
       <v-btn
         prepend-icon="mdi-play"
         :loading="store.running[p.id]"

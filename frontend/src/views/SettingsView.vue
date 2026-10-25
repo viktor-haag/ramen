@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive } from "vue";
 import { useI18n } from "vue-i18n";
+import { useDisplay } from "vuetify";
 import type { PluginOut } from "@/api/types";
 import AboutCard from "@/components/AboutCard.vue";
 import AiSettings from "@/components/AiSettings.vue";
@@ -11,6 +12,7 @@ import { useNotifyStore } from "@/stores/notify";
 import { useSettingsPluginsStore } from "@/stores/plugins";
 
 const { t, locale } = useI18n();
+const { xs } = useDisplay();
 const store = useSettingsPluginsStore();
 
 const languages = [
@@ -87,13 +89,14 @@ async function toggleEnabled(p: PluginOut, value: boolean | null) {
       <v-expansion-panel-title>
         <div class="d-flex align-center ga-2 flex-grow-1">
           <span class="text-subtitle-1">{{ p.display_name }}</span>
-          <v-chip v-for="c in p.capabilities" :key="c" size="small" label>{{ t(`settings.capability.${c}`) }}</v-chip>
+          <v-chip v-for="c in p.capabilities" :key="c" size="small" label class="d-none d-sm-inline-flex">{{ t(`settings.capability.${c}`) }}</v-chip>
           <v-chip v-if="p.error !== null" size="small" label color="error" data-test="plugin-error-chip">{{ t("settings.notLoadable") }}</v-chip>
           <v-spacer />
-          <div v-if="p.error === null && drafts[p.name]" @click.stop @keydown.stop @keyup.stop>
+          <div v-if="p.error === null && drafts[p.name]" class="mr-2" @click.stop @keydown.stop @keyup.stop>
             <v-switch
               :model-value="drafts[p.name].enabled"
-              :label="t('settings.enabled')"
+              :label="xs ? undefined : t('settings.enabled')"
+              :aria-label="t('settings.enabled')"
               :loading="drafts[p.name].toggling"
               :disabled="drafts[p.name].toggling || drafts[p.name].saving"
               color="primary"

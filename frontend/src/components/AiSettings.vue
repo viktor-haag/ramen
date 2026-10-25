@@ -120,7 +120,7 @@ const usageRows = computed(() => {
 <template>
   <h2 class="text-h6 mb-2">{{ t("ai.title") }}</h2>
 
-  <v-card class="mb-4" :title="t('ai.configs')" data-test="llm-configs">
+  <v-card class="mb-4 ramen-stack-append" :title="t('ai.configs')" data-test="llm-configs">
     <template #append>
       <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus" data-test="llm-add" @click="openDialog(null)">{{ t("ai.add") }}</v-btn>
     </template>

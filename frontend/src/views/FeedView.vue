@@ -109,12 +109,11 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <div class="d-flex align-center mb-2">
+    <div class="d-flex align-center flex-wrap ga-2 mb-2">
       <h1 class="text-h5 flex-grow-1">{{ t("feed.title") }}</h1>
-      <span class="text-body-2 text-medium-emphasis mr-4" data-test="feed-total">{{ t("feed.total", { n: feed.total }, feed.total) }}</span>
+      <span class="text-body-2 text-medium-emphasis mr-2" data-test="feed-total">{{ t("feed.total", { n: feed.total }, feed.total) }}</span>
       <v-btn
         variant="tonal"
-        class="mr-2"
         prepend-icon="mdi-star-circle-outline"
         :disabled="!fit.ready"
         :loading="bulkBusy"
@@ -127,7 +126,6 @@ onUnmounted(() => {
         v-if="fit.status.active > 0"
         variant="tonal"
         color="warning"
-        class="mr-2"
         prepend-icon="mdi-stop-circle-outline"
         :loading="cancelBusy"
         data-test="fit-cancel"
@@ -163,8 +161,9 @@ onUnmounted(() => {
               · {{ t("feed.foundAgo", { when: relativeTime(item.first_seen_at, locale) }) }}
             </v-list-item-subtitle>
             <template #append>
-              <v-chip size="x-small" label class="mr-2">{{ item.source }}</v-chip>
-              <v-chip size="x-small" label class="mr-2" :color="TRIAGE_COLOR[item.triage_status]">
+              <!-- phones: no room for the chips; status shows as the row's accent edge -->
+              <v-chip size="x-small" label class="mr-2 d-none d-sm-inline-flex">{{ item.source }}</v-chip>
+              <v-chip size="x-small" label class="mr-2 d-none d-sm-inline-flex" :color="TRIAGE_COLOR[item.triage_status]">
                 {{ t(`triage.${item.triage_status}`) }}
               </v-chip>
               <v-btn
