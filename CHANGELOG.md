@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0](https://github.com/viktor-haag/ramen/compare/v0.1.0...v1.0.0) (2026-10-25)
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([7dcd5a9](https://github.com/viktor-haag/ramen/commit/7dcd5a9d74253eea0d2f1b8e9233c0a5fae8ae07))
+
 ## 0.1.0 (2026-10-25)
 
 
