@@ -317,6 +317,8 @@ export interface LlmConfigOut {
   extra_headers: Record<string, string>;
   price_in: number | null;
   price_out: number | null;
+  daily_limit_kind: DailyLimitKind;
+  daily_limit_value: number | null;
   is_default: boolean;
 }
 
@@ -333,6 +335,9 @@ export interface LlmConfigIn {
   extra_headers: Record<string, string>;
   price_in: number | null;
   price_out: number | null;
+  /** Always sent with both fields; the value is null for `none`. */
+  daily_limit_kind: DailyLimitKind;
+  daily_limit_value: number | null;
 }
 
 export interface LlmPurposes {
@@ -387,11 +392,23 @@ export interface UsageTotals {
   eur: number | null;
 }
 
+export interface ConfigUsageOut {
+  /** null for the aggregated row of deleted configurations (`deleted: true`, always last). */
+  config_id: number | null;
+  name: string | null;
+  deleted: boolean;
+  today: UsageTotals;
+  month: UsageTotals;
+  limit: { kind: DailyLimitKind; value: number | null };
+  limit_exceeded: boolean;
+}
+
 export interface LlmUsageOut {
   today: UsageTotals;
   month: UsageTotals;
   limit: { kind: DailyLimitKind; value: number | null };
   limit_exceeded: boolean;
+  per_config: ConfigUsageOut[];
 }
 
 // --- errors ---

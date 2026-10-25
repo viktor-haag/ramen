@@ -106,15 +106,31 @@ async function saveSettings() {
 // --- usage ---
 const num = (n: number) => new Intl.NumberFormat(locale.value).format(n);
 const eur = (n: number) => new Intl.NumberFormat(locale.value, { style: "currency", currency: "EUR" }).format(n);
+const tokensText = (u: UsageTotals) => t("ai.usage.tokens", { input: num(u.input_tokens), output: num(u.output_tokens) });
+const eurText = (u: UsageTotals) => (u.eur === null ? t("ai.usage.noPrices") : eur(u.eur));
+interface LimitView { used: string; limit: string; percent: number; exceeded: boolean }
+/** Progress of today's usage against a limit; null when there is no limit. */
+function limitView(today: UsageTotals, limit: { kind: DailyLimitKind; value: number | null }, exceeded: boolean): LimitView | null {
+  if (limit.kind === "none" || limit.value === null) return null;
+  const tokens = limit.kind === "tokens";
+  const used = tokens ? today.input_tokens + today.output_tokens : (today.eur ?? 0);
+  const fmt = (n: number) => (tokens ? num(n) : eur(n));
+  return { used: fmt(used), limit: fmt(limit.value), percent: limit.value > 0 ? Math.min(100, (used / limit.value) * 100) : 100, exceeded };
+}
 const usageRows = computed(() => {
   const u = store.usage;
   if (!u) return [];
-  const row = (key: string, totals: UsageTotals) => ({
-    key,
-    tokens: t("ai.usage.tokens", { input: num(totals.input_tokens), output: num(totals.output_tokens) }),
-    eur: totals.eur === null ? t("ai.usage.noPrices") : eur(totals.eur),
-  });
-  return [row("today", u.today), row("month", u.month)];
+  return u.per_config.map((c) => ({
+    key: c.config_id === null ? "deleted" : String(c.config_id),
+    name: c.deleted ? t("ai.usage.deleted") : (c.name ?? ""),
+    today: c.today,
+    month: c.month,
+    limit: limitView(c.today, c.limit, c.limit_exceeded),
+  }));
+});
+const totalRow = computed(() => {
+  const u = store.usage;
+  return u ? { today: u.today, month: u.month, limit: limitView(u.today, u.limit, u.limit_exceeded) } : null;
 });
 </script>
 
@@ -233,15 +249,46 @@ const usageRows = computed(() => {
   <v-card class="mb-6" :title="t('ai.usage.title')" data-test="llm-usage">
     <v-card-text v-if="store.usage">
       <v-alert v-if="store.usage.limit_exceeded" type="warning" density="compact" class="mb-3" data-test="llm-limit-exceeded">{{ t("ai.usage.limitExceeded") }}</v-alert>
-      <v-table density="compact">
-        <tbody>
-          <tr v-for="r in usageRows" :key="r.key" :data-test="`llm-usage-${r.key}`">
-            <th class="text-left">{{ t(`ai.usage.${r.key}`) }}</th>
-            <td>{{ r.tokens }}</td>
-            <td>{{ r.eur }}</td>
-          </tr>
-        </tbody>
-      </v-table>
+      <div class="overflow-x-auto">
+        <v-table density="compact" data-test="llm-usage-table">
+          <thead>
+            <tr>
+              <th class="text-left">{{ t("ai.usage.config") }}</th>
+              <th class="text-left">{{ t("ai.usage.today") }}</th>
+              <th class="text-left">{{ t("ai.usage.month") }}</th>
+              <th class="text-left">{{ t("ai.usage.limit") }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in usageRows" :key="r.key" :data-test="`llm-usage-row-${r.key}`">
+              <th class="text-left">{{ r.name }}</th>
+              <td class="text-no-wrap">{{ tokensText(r.today) }}<br />{{ eurText(r.today) }}</td>
+              <td class="text-no-wrap">{{ tokensText(r.month) }}<br />{{ eurText(r.month) }}</td>
+              <td class="usage-limit">
+                <template v-if="r.limit">
+                  <v-progress-linear :model-value="r.limit.percent" :color="r.limit.exceeded ? 'error' : 'primary'" :class="{ 'text-error': r.limit.exceeded }" height="6" rounded />
+                  <span class="text-caption text-no-wrap">{{ r.limit.used }} / {{ r.limit.limit }}</span>
+                </template>
+                <template v-else>–</template>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot v-if="totalRow">
+            <tr data-test="llm-usage-total" class="font-weight-bold">
+              <th class="text-left">{{ t("ai.usage.total") }}</th>
+              <td class="text-no-wrap">{{ tokensText(totalRow.today) }}<br />{{ eurText(totalRow.today) }}</td>
+              <td class="text-no-wrap">{{ tokensText(totalRow.month) }}<br />{{ eurText(totalRow.month) }}</td>
+              <td class="usage-limit">
+                <template v-if="totalRow.limit">
+                  <v-progress-linear :model-value="totalRow.limit.percent" :color="totalRow.limit.exceeded ? 'error' : 'primary'" :class="{ 'text-error': totalRow.limit.exceeded }" height="6" rounded />
+                  <span class="text-caption text-no-wrap">{{ totalRow.limit.used }} / {{ totalRow.limit.limit }}</span>
+                </template>
+                <template v-else>–</template>
+              </td>
+            </tr>
+          </tfoot>
+        </v-table>
+      </div>
     </v-card-text>
   </v-card>
 
@@ -253,3 +300,9 @@ const usageRows = computed(() => {
     @confirm="confirmDelete"
   />
 </template>
+
+<style scoped>
+.usage-limit {
+  min-width: 140px;
+}
+</style>

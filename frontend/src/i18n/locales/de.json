@@ -371,7 +371,8 @@
     "prompt_not_found": "Diesen Prompt gibt es nicht.",
     "profile_missing": "Es gibt noch nichts, woraus ein Profil erstellt werden könnte. Lade zuerst eine Unterlage hoch oder schreibe einen Freitext.",
     "profile_edited": "Du hast das Profil manuell bearbeitet. Beim Neu-Erstellen werden deine Änderungen ersetzt.",
-    "daily_limit_reached": "Das Tageslimit für die LLM-Nutzung ist erreicht. Es wurde nichts eingereiht.",
+    "daily_limit_reached": "Globales Tageslimit erreicht.",
+    "daily_limit_reached_config": "Tageslimit von „{config_name}“ erreicht.",
     "limit_needs_prices": "Ein Tageslimit in Euro braucht beide Preise (Eingabe und Ausgabe)."
   },
   "detail": {
@@ -534,6 +535,10 @@
       "month": "Dieser Monat",
       "tokens": "{input} Eingabe- / {output} Ausgabe-Tokens",
       "noPrices": "keine Preise hinterlegt",
+      "config": "Konfiguration",
+      "limit": "Limit",
+      "total": "Gesamt",
+      "deleted": "Gelöschte Konfigurationen",
       "limitExceeded": "Tageslimit erreicht."
     }
   },

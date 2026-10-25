@@ -231,8 +231,20 @@ describe("bulk evaluation in FeedView", () => {
     (document.querySelector('[data-test="confirm-ok"]') as HTMLElement).click();
     await flushPromises();
     const notify = useNotifyStore(pinia);
-    expect(notify.message).toBe("The daily limit for LLM usage has been reached. Nothing was queued.");
+    expect(notify.message).toBe("Global daily limit reached.");
     expect(notify.color).toBe("error");
+    w.unmount();
+  });
+
+  it("409 daily_limit_reached with scope config names the configuration", async () => {
+    post.mockRejectedValue(new ApiError(409, "daily_limit_reached", { scope: "config", config_name: "Main" }, "limit"));
+    const { w, pinia } = mountFeed();
+    await flushPromises();
+    await w.find('[data-test="fit-bulk"]').trigger("click");
+    await flushPromises();
+    (document.querySelector('[data-test="confirm-ok"]') as HTMLElement).click();
+    await flushPromises();
+    expect(useNotifyStore(pinia).message).toBe("Daily limit of \u201cMain\u201d reached.");
     w.unmount();
   });
 

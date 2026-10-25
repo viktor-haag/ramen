@@ -37,7 +37,7 @@ beforeAll(() => {
 
 const cfg = (over: Partial<LlmConfigOut> = {}): LlmConfigOut => ({
   id: 1, name: "Main", provider: "anthropic", base_url: null, api_key: "…1234", has_api_key: true, model: "claude-x",
-  thinking: "off", supports_images: true, extra_body: {}, extra_headers: {}, price_in: null, price_out: null, is_default: true, ...over,
+  thinking: "off", supports_images: true, extra_body: {}, extra_headers: {}, price_in: null, price_out: null, daily_limit_kind: "none", daily_limit_value: null, is_default: true, ...over,
 });
 const doc = (over: Partial<ProfileDocumentOut> = {}): ProfileDocumentOut => ({
   id: 1, filename: "cv.pdf", display_name: "cv.pdf", mime: "application/pdf", kind: "pdf_text", description: "My CV",

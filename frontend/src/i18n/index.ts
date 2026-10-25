@@ -41,6 +41,9 @@ export function setLocale(l: Locale): void {
 /** Translated message for a backend error; falls back to the (English) detail text. */
 export function errorMessage(e: ApiError): string {
   const { t, te } = i18n.global;
+  if (e.code === "daily_limit_reached" && e.params?.scope === "config" && te("errors.daily_limit_reached_config")) {
+    return t("errors.daily_limit_reached_config", { config_name: String(e.params.config_name ?? "") });
+  }
   if (e.code && te(`errors.${e.code}`)) {
     const params: Record<string, unknown> = { ...(e.params ?? {}) };
     if (typeof params.reason === "string" && !params.reason.trim()) params.reason = t("common.noReason");

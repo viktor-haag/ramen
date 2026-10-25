@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import type { LlmConfigIn, LlmConfigOut, LlmModelsIn, LlmProvider, ThinkingLevel } from "@/api/types";
+import type { DailyLimitKind, LlmConfigIn, LlmConfigOut, LlmModelsIn, LlmProvider, ThinkingLevel } from "@/api/types";
 import { useLlmStore } from "@/stores/llm";
 import { useNotifyStore } from "@/stores/notify";
 
@@ -13,6 +13,7 @@ const store = useLlmStore();
 const PROVIDERS: LlmProvider[] = ["anthropic", "openai", "openai_compatible"];
 const LEVELS: ThinkingLevel[] = ["off", "low", "medium", "high", "max"];
 const providerItems = computed(() => PROVIDERS.map((p) => ({ value: p, title: t(`ai.providers.${p}`) })));
+const kindItems = computed(() => (["none", "tokens", "eur"] as const).map((k) => ({ value: k, title: t(`ai.limit.${k}`) })));
 const thinkingItems = computed(() => LEVELS.map((l) => ({ value: l, title: t(`ai.thinking.${l}`) })));
 
 interface Form {
@@ -28,6 +29,8 @@ interface Form {
   extraHeaders: string;
   price_in: string;
   price_out: string;
+  limitKind: DailyLimitKind;
+  limitValue: string;
 }
 const form = reactive<Form>(blank());
 const models = ref<string[]>([]);
@@ -43,6 +46,7 @@ function blank(): Form {
   return {
     name: "", provider: "anthropic", base_url: "", api_key: "", clearKey: false, model: "", thinking: "off",
     supports_images: true, extraBody: "", extraHeaders: "", price_in: "", price_out: "",
+    limitKind: "none", limitValue: "",
   };
 }
 const pretty = (o: object) => (Object.keys(o).length ? JSON.stringify(o, null, 2) : "");
@@ -57,6 +61,7 @@ function init() {
           name: c.name, provider: c.provider, base_url: c.base_url ?? "", api_key: "", clearKey: false, model: c.model,
           thinking: c.thinking, supports_images: c.supports_images, extraBody: pretty(c.extra_body),
           extraHeaders: pretty(c.extra_headers), price_in: priceText(c.price_in), price_out: priceText(c.price_out),
+          limitKind: c.daily_limit_kind, limitValue: priceText(c.daily_limit_value),
         }
       : blank(),
   );
@@ -118,6 +123,8 @@ function payload(): LlmConfigIn | null {
     extra_headers: headers.value.value as Record<string, string>,
     price_in: price(form.price_in),
     price_out: price(form.price_out),
+    daily_limit_kind: form.limitKind,
+    daily_limit_value: form.limitKind === "none" ? null : price(form.limitValue),
   };
   // PUT semantics: omitted api_key keeps the stored key, "" clears it.
   if (form.clearKey) out.api_key = "";
@@ -130,7 +137,7 @@ async function save() {
   if (!data || saving.value) return;
   saving.value = true;
   serverErrors.value = {};
-  const visible = ["name", "provider", "api_key", "model", "extra_body", "extra_headers", "price_in", "price_out"];
+  const visible = ["name", "provider", "api_key", "model", "extra_body", "extra_headers", "price_in", "price_out", "daily_limit_kind", "daily_limit_value"];
   visible.push(compat.value ? "base_url" : "thinking");
   const res = await store.save(data, props.config?.id, visible);
   saving.value = false;
@@ -218,6 +225,32 @@ async function loadModels() {
           data-test="llm-thinking"
         />
         <v-switch v-model="form.supports_images" :label="t('ai.dialog.supportsImages')" color="primary" density="comfortable" hide-details data-test="llm-images" />
+
+        <h3 class="text-subtitle-1 mt-4 mb-2">{{ t("ai.limit.title") }}</h3>
+        <div class="d-flex ga-2 flex-wrap">
+          <v-select
+            :model-value="form.limitKind"
+            :items="kindItems"
+            :label="t('ai.limit.kind')"
+            :error-messages="serverErrors.daily_limit_kind"
+            class="flex-grow-1"
+            data-test="llm-limit-kind"
+            @update:model-value="(v: DailyLimitKind) => (form.limitKind = v)"
+          />
+          <v-text-field
+            v-model="form.limitValue"
+            type="number"
+            min="0"
+            :step="form.limitKind === 'tokens' ? 1 : 'any'"
+            :label="t(form.limitKind === 'eur' ? 'ai.limit.eurValue' : 'ai.limit.tokensValue')"
+            :hint="form.limitKind === 'eur' ? t('ai.limit.eurHint') : undefined"
+            :persistent-hint="form.limitKind === 'eur'"
+            :disabled="form.limitKind === 'none'"
+            :error-messages="serverErrors.daily_limit_value"
+            class="flex-grow-1"
+            data-test="llm-limit-value"
+          />
+        </div>
 
         <v-expansion-panels v-model="panel" variant="accordion" class="mt-4">
           <v-expansion-panel :value="0" eager data-test="llm-advanced">

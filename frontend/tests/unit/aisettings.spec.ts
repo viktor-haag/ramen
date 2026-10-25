@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import { VCombobox, VLayout, VSelect } from "vuetify/components";
 import { ApiError, api } from "@/api/client";
-import type { AppSettings, LlmConfigOut, LlmPurposes, LlmUsageOut } from "@/api/types";
+import type { AppSettings, ConfigUsageOut, LlmConfigOut, LlmPurposes, LlmUsageOut } from "@/api/types";
 import AiSettings from "@/components/AiSettings.vue";
 import LlmConfigDialog from "@/components/LlmConfigDialog.vue";
 import { i18n, setLocale } from "@/i18n";
@@ -23,11 +23,16 @@ const del = vi.mocked(api.del);
 
 const cfg = (over: Partial<LlmConfigOut> = {}): LlmConfigOut => ({
   id: 1, name: "Main", provider: "anthropic", base_url: null, api_key: "…1234", has_api_key: true, model: "claude-x",
-  thinking: "off", supports_images: true, extra_body: {}, extra_headers: {}, price_in: null, price_out: null, is_default: true, ...over,
+  thinking: "off", supports_images: true, extra_body: {}, extra_headers: {}, price_in: null, price_out: null, daily_limit_kind: "none", daily_limit_value: null, is_default: true, ...over,
 });
 const usage = (over: Partial<LlmUsageOut> = {}): LlmUsageOut => ({
   today: { input_tokens: 1200, output_tokens: 300, eur: 0.5 },
   month: { input_tokens: 40000, output_tokens: 9000, eur: 2.25 },
+  limit: { kind: "none", value: null }, limit_exceeded: false, per_config: [], ...over,
+});
+const cu = (over: Partial<ConfigUsageOut> = {}): ConfigUsageOut => ({
+  config_id: 1, name: "Main", deleted: false,
+  today: { input_tokens: 100, output_tokens: 50, eur: 0.1 }, month: { input_tokens: 1000, output_tokens: 500, eur: 1.5 },
   limit: { kind: "none", value: null }, limit_exceeded: false, ...over,
 });
 
@@ -227,7 +232,31 @@ describe("LlmConfigDialog", () => {
     expect(post).toHaveBeenCalledWith("/llm/configs", {
       name: "Ollama", provider: "openai_compatible", base_url: "http://localhost:11434/v1", model: "llama3", thinking: "off",
       supports_images: false, extra_body: { top_k: 5 }, extra_headers: {}, price_in: 1.5, price_out: null,
+      daily_limit_kind: "none", daily_limit_value: null,
     });
+    w.unmount();
+  });
+
+  it("disables the limit value for none and sends the per-config limit", async () => {
+    put.mockResolvedValue(cfg() as never);
+    const w = await openDialog(cfg());
+    expect(q<HTMLInputElement>("[data-test=llm-limit-value] input")!.disabled).toBe(true);
+    await click("[data-test=llm-save]");
+    expect(put.mock.calls[0][1]).toMatchObject({ daily_limit_kind: "none", daily_limit_value: null });
+    put.mockClear();
+    selectByTest(w, "llm-limit-kind").vm.$emit("update:modelValue", "tokens");
+    await flushPromises();
+    expect(q<HTMLInputElement>("[data-test=llm-limit-value] input")!.disabled).toBe(false);
+    await type("[data-test=llm-limit-value] input", "5000");
+    await click("[data-test=llm-save]");
+    expect(put.mock.calls[0][1]).toMatchObject({ daily_limit_kind: "tokens", daily_limit_value: 5000 });
+    w.unmount();
+  });
+
+  it("loads the stored limit into the dialog", async () => {
+    const w = await openDialog(cfg({ daily_limit_kind: "eur", daily_limit_value: 2.5 }));
+    expect(q<HTMLInputElement>("[data-test=llm-limit-value] input")!.value).toBe("2.5");
+    expect(q("[data-test=llm-limit-value]")!.textContent).toContain("without prices");
     w.unmount();
   });
 
@@ -409,28 +438,67 @@ describe("AiSettings", () => {
     w.unmount();
   });
 
-  it("renders usage with euro amounts and the exceeded warning", async () => {
+  it("renders the global total row with euro amounts and the exceeded warning", async () => {
     usageData = usage({ limit: { kind: "eur", value: 0.5 }, limit_exceeded: true });
     settings = { ...settings, daily_limit_kind: "eur", daily_limit_value: 0.5 };
     const w = await mountSettings();
-    const text = q("[data-test=llm-usage]")!.textContent!;
+    const text = q("[data-test=llm-usage-total]")!.textContent!;
     expect(text).toContain("1,200");
     expect(text).toContain("300");
-    expect(text).toContain("0.50");
+    expect(text).toContain("€0.50 / €0.50");
     expect(text).toContain("2.25");
     expect(q("[data-test=llm-limit-exceeded]")).not.toBeNull();
+    expect(q("[data-test=llm-usage-total] .v-progress-linear.text-error, [data-test=llm-usage-total] .v-progress-linear[class*=error]")).not.toBeNull();
     w.unmount();
   });
 
   it("renders usage without euro amounts when no config has prices", async () => {
     usageData = usage({ today: { input_tokens: 10, output_tokens: 5, eur: null }, month: { input_tokens: 20, output_tokens: 8, eur: null } });
     const w = await mountSettings();
-    const text = q("[data-test=llm-usage]")!.textContent!;
-    expect(q("[data-test=llm-usage-today]")!.textContent).toContain("10 in / 5 out tokens");
-    expect(q("[data-test=llm-usage-month]")!.textContent).toContain("20 in / 8 out tokens");
-    expect(text).not.toContain("€");
-    expect(text.match(/no prices set/g)).toHaveLength(2);
+    const row = q("[data-test=llm-usage-total]")!.textContent!;
+    expect(row).toContain("10 in / 5 out tokens");
+    expect(row).toContain("20 in / 8 out tokens");
+    expect(q("[data-test=llm-usage]")!.textContent).not.toContain("€");
+    expect(row.match(/no prices set/g)).toHaveLength(2);
+    expect(row).toContain("–");
     expect(q("[data-test=llm-limit-exceeded]")).toBeNull();
+    w.unmount();
+  });
+
+  it("renders one row per config, the deleted row and the total, inside a scroll wrapper", async () => {
+    usageData = usage({
+      per_config: [
+        cu(),
+        cu({ config_id: 2, name: "Local", today: { input_tokens: 0, output_tokens: 0, eur: null }, month: { input_tokens: 0, output_tokens: 0, eur: null } }),
+        cu({ config_id: null, name: null, deleted: true }),
+      ],
+    });
+    const w = await mountSettings();
+    expect(q("[data-test=llm-usage-table]")!.closest(".overflow-x-auto")).not.toBeNull();
+    const rows = [...body().querySelectorAll("[data-test^=llm-usage-row-]")].map((r) => r.getAttribute("data-test"));
+    expect(rows).toEqual(["llm-usage-row-1", "llm-usage-row-2", "llm-usage-row-deleted"]);
+    expect(q("[data-test=llm-usage-row-1]")!.textContent).toContain("Main");
+    expect(q("[data-test=llm-usage-row-1]")!.textContent).toContain("100 in / 50 out tokens");
+    expect(q("[data-test=llm-usage-row-deleted]")!.textContent).toContain("Deleted configurations");
+    expect(q("[data-test=llm-usage-total]")).not.toBeNull();
+    w.unmount();
+  });
+
+  it("shows a config limit as progress and marks an exceeded one red", async () => {
+    usageData = usage({
+      per_config: [
+        cu({ limit: { kind: "tokens", value: 1000 } }),
+        cu({ config_id: 2, name: "Local", today: { input_tokens: 900, output_tokens: 300, eur: null }, limit: { kind: "tokens", value: 1000 }, limit_exceeded: true }),
+      ],
+    });
+    const w = await mountSettings();
+    const ok = q("[data-test=llm-usage-row-1]")!;
+    const over = q("[data-test=llm-usage-row-2]")!;
+    expect(ok.textContent).toContain("150 / 1,000");
+    expect(over.textContent).toContain("1,200 / 1,000");
+    expect(ok.querySelector(".v-progress-linear")).not.toBeNull();
+    expect(ok.querySelector("[class*=text-error]")).toBeNull();
+    expect(over.querySelector(".v-progress-linear")!.className).toContain("text-error");
     w.unmount();
   });
 });
