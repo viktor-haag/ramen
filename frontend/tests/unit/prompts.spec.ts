@@ -82,6 +82,17 @@ describe("PromptsCard", () => {
     expect(q('[data-test="prompt-customized"]')).not.toBeNull();
   });
 
+  it("limits the text to 20000 characters: counter, message, save disabled", async () => {
+    await mountCard();
+    expect(q('[data-test="prompt-text"]')!.textContent).toContain("/ 20000");
+    await type('[data-test="prompt-text"] textarea', "x".repeat(20_001));
+    expect(q('[data-test="prompt-text"]')!.textContent).toContain("at most 20,000 characters");
+    expect(saveBtn().disabled).toBe(true);
+    await type('[data-test="prompt-text"] textarea', "x".repeat(20_000));
+    expect(q('[data-test="prompt-text"]')!.textContent).not.toContain("at most 20,000 characters");
+    expect(saveBtn().disabled).toBe(false);
+  });
+
   it("keeps drafts across tab switches", async () => {
     await mountCard();
     await type('[data-test="prompt-text"] textarea', "draft fit");

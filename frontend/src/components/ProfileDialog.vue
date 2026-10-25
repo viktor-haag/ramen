@@ -81,6 +81,15 @@ function onLocationSearch(text: string) {
 const valid = computed(() => props.pluginsLoaded && form.name.trim() !== "" && form.keywords.length > 0 && keywordError.value === null && locationError.value === null && (usable.value.length === 0 || checked.value.length > 0));
 
 function submit() {
+  // Text typed but not yet committed (no Enter/comma) still counts.
+  if (keywordSearch.value.trim()) {
+    setKeywords([...form.keywords, keywordSearch.value]);
+    keywordSearch.value = "";
+  }
+  if (locationSearch.value.trim()) {
+    setLocations([...form.locations, locationSearch.value]);
+    locationSearch.value = "";
+  }
   if (valid.value) emit("save", toPayload(form, checked.value, props.plugins));
 }
 </script>

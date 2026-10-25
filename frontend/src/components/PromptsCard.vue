@@ -6,7 +6,9 @@ import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import { useNotifyStore } from "@/stores/notify";
 import { usePromptsStore } from "@/stores/prompts";
 
-const { t } = useI18n();
+const MAX_PROMPT_CHARS = 20000;
+
+const { t, locale } = useI18n();
 const store = usePromptsStore();
 const notify = useNotifyStore();
 
@@ -36,6 +38,8 @@ const byPurpose = (p: PromptPurpose): PromptOut | undefined => store.items.find(
 const current = computed(() => byPurpose(tab.value));
 const dirty = computed(() => !!current.value && drafts[tab.value] !== current.value.text);
 const blank = computed(() => drafts[tab.value].trim() === "");
+const tooLong = computed(() => drafts[tab.value].length > MAX_PROMPT_CHARS);
+const rules = [(v: string) => v.length <= MAX_PROMPT_CHARS || t("prompts.tooLong", { max: new Intl.NumberFormat(locale.value).format(MAX_PROMPT_CHARS) })];
 
 /** The raw fixed part reads naturally: placeholder -> localized hint, doubled braces -> single. */
 function fixedText(p: PromptOut): string {
@@ -78,6 +82,9 @@ async function doReset() {
         rows="6"
         variant="outlined"
         hide-details="auto"
+        :counter="MAX_PROMPT_CHARS"
+        persistent-counter
+        :rules="rules"
         data-test="prompt-text"
       />
       <div v-if="current.fixed_text" class="mt-4" data-test="prompt-fixed">
@@ -88,7 +95,7 @@ async function doReset() {
     <v-card-actions v-if="current" class="flex-wrap">
       <v-btn :disabled="!current.customized" data-test="prompt-reset" @click="confirmOpen = true">{{ t("prompts.reset") }}</v-btn>
       <v-spacer />
-      <v-btn color="primary" variant="flat" :disabled="!dirty || blank" :loading="saving" data-test="prompt-save" @click="save">{{ t("common.save") }}</v-btn>
+      <v-btn color="primary" variant="flat" :disabled="!dirty || blank || tooLong" :loading="saving" data-test="prompt-save" @click="save">{{ t("common.save") }}</v-btn>
     </v-card-actions>
   </v-card>
 

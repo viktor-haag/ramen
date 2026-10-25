@@ -133,6 +133,18 @@ describe("ProfileDialog", () => {
     w3.unmount();
   });
 
+  it("adds uncommitted keyword and city text when saving", async () => {
+    const w = setup({ plugins: [plugin("a")], profile: profile(["python"]) });
+    await new Promise((r) => setTimeout(r));
+    await type("Go");
+    await typeCity("Berlin");
+    saveBtn().click();
+    await nextTick();
+    const emitted = w.findComponent(ProfileDialog).emitted("save")!;
+    expect(emitted[0][0]).toMatchObject({ keywords: ["python", "Go"], locations: ["Berlin"] });
+    w.unmount();
+  });
+
   it("save is disabled without chips and enabled with one", async () => {
     const w = setup({ plugins: [plugin("a")], profile: null });
     await new Promise((r) => setTimeout(r));

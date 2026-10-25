@@ -458,6 +458,7 @@
     "reset": "Reset to default",
     "resetConfirm": "Discard your own prompt and use the default?",
     "resetTitle": "Reset prompt",
+    "tooLong": "Use at most {max} characters.",
     "text": "Prompt text"
   },
   "ai": {
@@ -539,6 +540,8 @@
       "month": "This month",
       "tokens": "{input} in / {output} out tokens",
       "noPrices": "no prices set",
+      "costUnknown": "cost unknown",
+      "totalExcludesUnpriced": "excluding costs of configurations without prices",
       "config": "Configuration",
       "limit": "Limit",
       "total": "Total",

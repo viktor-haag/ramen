@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from "pinia";
 import { nextTick } from "vue";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "@/api/client";
 import type { AppStatus, ApplicationOut } from "@/api/types";
 import { i18n } from "@/i18n";
@@ -28,6 +28,10 @@ beforeEach(() => {
   setActivePinia(createPinia());
   get.mockReset();
   post.mockReset();
+});
+
+afterEach(() => {
+  i18n.global.locale.value = "en";
 });
 
 describe("applications store", () => {
@@ -154,6 +158,5 @@ describe("applications store exportUrl", () => {
     expect(url.searchParams.get("lang")).toBe("de");
     s.q = null;
     expect(u("csv").searchParams.has("q")).toBe(false);
-    i18n.global.locale.value = "en";
   });
 });

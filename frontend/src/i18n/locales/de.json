@@ -458,6 +458,7 @@
     "reset": "Auf Standard zurücksetzen",
     "resetConfirm": "Eigenen Prompt verwerfen und den Standard verwenden?",
     "resetTitle": "Prompt zurücksetzen",
+    "tooLong": "Höchstens {max} Zeichen verwenden.",
     "text": "Prompt-Text"
   },
   "ai": {
@@ -539,6 +540,8 @@
       "month": "Dieser Monat",
       "tokens": "{input} Eingabe- / {output} Ausgabe-Tokens",
       "noPrices": "keine Preise hinterlegt",
+      "costUnknown": "Kosten unbekannt",
+      "totalExcludesUnpriced": "ohne Kosten von Konfigurationen ohne Preise",
       "config": "Konfiguration",
       "limit": "Limit",
       "total": "Gesamt",
