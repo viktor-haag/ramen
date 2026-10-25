@@ -2,12 +2,13 @@ from pathlib import Path
 
 from app.config import Settings
 from app.errors import ConflictError
+from app.version import __version__
 
 
 def test_health(client):
     r = client.get("/api/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok"}
+    assert r.json() == {"status": "ok", "version": __version__}
 
 
 def test_settings_from_env(monkeypatch):

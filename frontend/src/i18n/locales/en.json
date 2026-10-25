@@ -327,6 +327,7 @@
   },
   "errors": {
     "not_found": "Not found.",
+    "update_check_disabled": "Update checks are disabled by the server configuration.",
     "network_error": "The server could not be reached.",
     "validation_error": "Some input is invalid.",
     "posting_not_found": "Posting not found.",

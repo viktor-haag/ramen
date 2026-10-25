@@ -1,6 +1,7 @@
 import logging
 import threading
-from datetime import UTC
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -14,6 +15,7 @@ log = logging.getLogger(__name__)
 
 JOB_PREFIX = "profile-"
 MISFIRE_GRACE_SECONDS = 30  # missed runs are not caught up
+UPDATE_CHECK_JOB_ID = "update-check"
 
 
 class SchedulerManager:
@@ -38,6 +40,15 @@ class SchedulerManager:
     def jobs(self) -> dict[str, float]:
         """Job id -> interval in hours."""
         return {job.id: job.trigger.interval.total_seconds() / 3600 for job in self._scheduler.get_jobs()}
+
+    def add_update_check(self, func: Callable[[], None], hours: float = 12, delay_seconds: float = 30) -> None:
+        """Register the periodic update check (first run after `delay_seconds`); `sync()` never touches it."""
+        self._scheduler.add_job(
+            func,
+            IntervalTrigger(hours=hours, start_date=datetime.now(UTC) + timedelta(seconds=delay_seconds), timezone=UTC),
+            id=UPDATE_CHECK_JOB_ID, replace_existing=True, coalesce=True, max_instances=1,
+            misfire_grace_time=MISFIRE_GRACE_SECONDS,
+        )
 
     def sync(self) -> None:
         # Read and apply under one lock: a stale snapshot must never be applied after a newer one.

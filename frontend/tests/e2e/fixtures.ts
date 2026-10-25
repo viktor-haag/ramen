@@ -92,6 +92,7 @@ export const test = base.extend<{ baseURL: string; fakeLlmUrl: string }>({
           JOBTRACKER_PLUGIN_DIRS: join(FRONTEND, "tests/e2e/plugins"),
           JOBTRACKER_FRONTEND_DIST: join(FRONTEND, "dist"),
           JOBTRACKER_POOL_SIZE: "1",
+          JOBTRACKER_UPDATE_CHECK: "false",
         },
       },
     );

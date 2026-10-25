@@ -264,9 +264,10 @@ def test_models_error_mapped(client, fake):
 def test_settings_defaults_update_and_bounds(client):
     assert client.get("/api/settings").json() == {
         "fit_auto": False, "fit_concurrency": 2, "daily_limit_kind": "none", "daily_limit_value": None,
-        "fit_language": "en"}
+        "fit_language": "en",
+        "update_check": True}
     new = {"fit_auto": True, "fit_concurrency": 8, "daily_limit_kind": "tokens", "daily_limit_value": 50000,
-           "fit_language": "en"}
+           "fit_language": "en", "update_check": True}
     res = client.put("/api/settings", json=new)
     assert res.status_code == 200 and res.json() == new
     assert client.get("/api/settings").json() == new

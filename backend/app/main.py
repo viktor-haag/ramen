@@ -23,6 +23,7 @@ from app.api import (
     profiles,
     runs,
     settings as settings_api,
+    version as version_api,
 )
 from app.config import Settings
 from app.db import make_engine, make_session_factory
@@ -34,7 +35,10 @@ from app.plugins.registry import PluginRegistry
 from app.runner.pool import RunnerPool
 from app.runner.scheduler import SchedulerManager
 from app.runner.service import RunService
+from app.services import settings as settings_service
 from app.services.geocode import Geocoder
+from app.services.updates import UpdateChecker
+from app.version import __version__
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +70,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             scheduler.start()
             scheduler.sync()
+            if settings.update_check:
+                scheduler.add_update_check(app.state.run_update_check)
             yield
         finally:
             scheduler.shutdown()
@@ -73,7 +79,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             fit_queue.shutdown()
             engine.dispose()
 
-    app = FastAPI(title="Job Tracker", lifespan=lifespan)
+    app = FastAPI(title="RAMEN", version=__version__, lifespan=lifespan)
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = make_session_factory(engine)
@@ -84,6 +90,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     log.info("loaded plugins: %s", ", ".join(sorted(discovered)) or "(none)")
     app.state.registry = PluginRegistry(discovered)
     app.state.geocoder = Geocoder()
+    app.state.update_checker = UpdateChecker(settings.update_repo, __version__)
+
+    def run_update_check() -> None:
+        """Scheduled job: skipped while the app setting is off; never raises."""
+        try:
+            with app.state.session_factory() as session:
+                if not settings_service.get_settings(session).update_check:
+                    return
+            app.state.update_checker.check()
+        except Exception:
+            log.exception("scheduled update check failed")
+
+    app.state.run_update_check = run_update_check
     install_handlers(app)
     app.include_router(health.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")
@@ -99,6 +118,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(llm.router, prefix="/api")
     app.include_router(me.router, prefix="/api")
     app.include_router(settings_api.router, prefix="/api")
+    app.include_router(version_api.router, prefix="/api")
 
     dist = settings.frontend_dist.resolve() if settings.frontend_dist and settings.frontend_dist.is_dir() else None
     if dist is not None and (dist / "assets").is_dir():

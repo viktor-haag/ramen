@@ -2,10 +2,11 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import _static_file, create_app
+from app.version import __version__
 
 
 def _client(tmp_path, dist):
-    settings = Settings(data_dir=tmp_path / "data", plugin_dirs=[], frontend_dist=dist)
+    settings = Settings(data_dir=tmp_path / "data", plugin_dirs=[], frontend_dist=dist, update_check=False)
     return TestClient(create_app(settings))
 
 
@@ -29,7 +30,7 @@ def test_spa_fallback(tmp_path):
             r = getattr(client, method)("/api/unknown")
             assert r.status_code == 404, method
             assert r.json()["code"] == "not_found"
-        assert client.get("/api/health").json() == {"status": "ok"}
+        assert client.get("/api/health").json() == {"status": "ok", "version": __version__}
 
 
 def test_no_frontend_dist_means_no_fallback(tmp_path):

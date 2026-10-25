@@ -15,7 +15,7 @@ FAKE_PLUGINS = Path(__file__).parent / "fake_plugins"
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return Settings(data_dir=tmp_path, plugin_dirs=[FAKE_PLUGINS])
+    return Settings(data_dir=tmp_path, plugin_dirs=[FAKE_PLUGINS], update_check=False)
 
 
 @pytest.fixture

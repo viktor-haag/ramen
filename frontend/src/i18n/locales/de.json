@@ -327,6 +327,7 @@
   },
   "errors": {
     "not_found": "Nicht gefunden.",
+    "update_check_disabled": "Die Update-Prüfung ist in der Serverkonfiguration abgeschaltet.",
     "network_error": "Der Server ist nicht erreichbar.",
     "validation_error": "Einige Eingaben sind ungültig.",
     "posting_not_found": "Stelle nicht gefunden.",
