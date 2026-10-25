@@ -58,7 +58,7 @@ describe("ProfileDialog", () => {
     await nextTick();
   };
   const profile = (keywords: string[]): ProfileOut => ({
-    id: 1, name: "Dev", keywords, location: null, radius_km: null, employment_type: null, remote: null, enabled: true, schedule_hours: null,
+    id: 1, name: "Dev", keywords, locations: [], radius_km: null, employment_type: null, remote: null, enabled: true, schedule_hours: null,
     plugins: [], last_run_at: null,
   });
 
@@ -83,6 +83,54 @@ describe("ProfileDialog", () => {
     await press("Enter");
     expect(chips()).toEqual(["a", "b"]);
     w.unmount();
+  });
+
+  const cityInput = () => document.body.querySelector("[data-test=pf-locations] input") as HTMLInputElement;
+  const cityChips = () => Array.from(document.body.querySelectorAll("[data-test=pf-locations] .v-chip")).map((c) => c.textContent!.trim());
+  const typeCity = async (text: string) => {
+    cityInput().focus();
+    cityInput().value = text;
+    cityInput().dispatchEvent(new Event("input", { bubbles: true }));
+    await nextTick();
+  };
+  const pressCity = async (key: string) => {
+    cityInput().dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    await nextTick();
+    await nextTick();
+  };
+
+  it("adds two cities via Enter and comma and saves them; radius is enabled only with a city", async () => {
+    const w = setup({ plugins: [plugin("a")], profile: profile(["python"]) });
+    await new Promise((r) => setTimeout(r));
+    const radius = () => document.body.querySelector("[data-test=pf-radius] input") as HTMLInputElement;
+    expect(radius().disabled).toBe(true);
+    await typeCity("Berlin");
+    await pressCity("Enter");
+    await typeCity("Hamburg,");
+    expect(cityChips()).toEqual(["Berlin", "Hamburg"]);
+    expect(radius().disabled).toBe(false);
+    saveBtn().click();
+    await nextTick();
+    const emitted = w.findComponent(ProfileDialog).emitted("save")!;
+    expect(emitted[0][0]).toMatchObject({ locations: ["Berlin", "Hamburg"] });
+    w.unmount();
+  });
+
+  it("shows existing cities and flags more than 20 or an overlong city", async () => {
+    const w = setup({ plugins: [plugin("a")], profile: { ...profile(["x"]), locations: ["Bonn", "Köln"] } });
+    await nextTick();
+    expect(cityChips()).toEqual(["Bonn", "Köln"]);
+    w.unmount();
+    const w2 = setup({ plugins: [plugin("a")], profile: { ...profile(["x"]), locations: Array.from({ length: 21 }, (_, i) => `c${i}`) } });
+    await nextTick();
+    expect(document.body.querySelector("[data-test=pf-locations-error]")!.textContent).toContain("20");
+    expect(saveBtn().disabled).toBe(true);
+    w2.unmount();
+    const w3 = setup({ plugins: [plugin("a")], profile: { ...profile(["x"]), locations: ["y".repeat(101)] } });
+    await nextTick();
+    expect(document.body.querySelector("[data-test=pf-locations-error]")!.textContent).toContain("100");
+    expect(saveBtn().disabled).toBe(true);
+    w3.unmount();
   });
 
   it("save is disabled without chips and enabled with one", async () => {

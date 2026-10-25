@@ -180,6 +180,9 @@
     "keywordsHint": "Mit Komma oder Enter trennen.",
     "keywordsTooMany": "Höchstens {max} Stichwörter verwenden.",
     "keywordsTooLong": "Jedes Stichwort darf höchstens {max} Zeichen lang sein.",
+    "locationsHint": "Mit Komma oder Enter trennen.",
+    "locationsTooMany": "Höchstens {max} Orte verwenden.",
+    "locationsTooLong": "Jeder Ort darf höchstens {max} Zeichen lang sein.",
     "pickOne": "Mindestens einen Extraktor auswählen.",
     "runCounts": "{new} neu / {total} gefunden / {invalid} ungültig",
     "schedule": {
@@ -199,7 +202,7 @@
     "fields": {
       "name": "Name",
       "keywords": "Stichwörter",
-      "location": "Ort",
+      "locations": "Orte",
       "radius": "Umkreis (km)",
       "employmentType": "Arbeitszeit",
       "anyHours": "Beliebig",

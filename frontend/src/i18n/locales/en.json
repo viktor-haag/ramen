@@ -180,6 +180,9 @@
     "keywordsHint": "Separate with comma or Enter.",
     "keywordsTooMany": "Use at most {max} keywords.",
     "keywordsTooLong": "Each keyword may have at most {max} characters.",
+    "locationsHint": "Separate with comma or Enter.",
+    "locationsTooMany": "Use at most {max} locations.",
+    "locationsTooLong": "Each location may have at most {max} characters.",
     "pickOne": "Select at least one extractor.",
     "runCounts": "{new} new / {total} found / {invalid} invalid",
     "schedule": {
@@ -199,7 +202,7 @@
     "fields": {
       "name": "Name",
       "keywords": "Keywords",
-      "location": "Location",
+      "locations": "Locations",
       "radius": "Radius (km)",
       "employmentType": "Working hours",
       "anyHours": "Any",

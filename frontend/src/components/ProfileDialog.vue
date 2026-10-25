@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { PluginOut, ProfileIn, ProfileOut } from "@/api/types";
-import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH, SCHEDULE_HOURS, isUsableSearch, normalizeKeywords, splitKeywords, toPayload, type ProfileForm } from "@/stores/profiles";
+import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH, MAX_LOCATIONS, MAX_LOCATION_LENGTH, SCHEDULE_HOURS, isUsableSearch, normalizeKeywords, splitKeywords, toPayload, type ProfileForm } from "@/stores/profiles";
 
 const props = withDefaults(defineProps<{ modelValue: boolean; profile: ProfileOut | null; plugins: PluginOut[]; busy?: boolean; pluginsLoaded?: boolean }>(), { pluginsLoaded: true });
 const emit = defineEmits<{ "update:modelValue": [boolean]; save: [ProfileIn] }>();
@@ -12,7 +12,7 @@ const form = reactive<ProfileForm>(blank());
 const checked = ref<string[]>([]);
 
 function blank(): ProfileForm {
-  return { name: "", keywords: [], location: "", radius_km: null, employment_type: null, remote: false, enabled: true, schedule_hours: null };
+  return { name: "", keywords: [], locations: [], radius_km: null, employment_type: null, remote: false, enabled: true, schedule_hours: null };
 }
 
 const searchPlugins = computed(() => props.plugins.filter((p) => p.capabilities.includes("search") || p.error !== null));
@@ -22,7 +22,7 @@ function reset() {
   const p = props.profile;
   Object.assign(form, p
     ? {
-        name: p.name, keywords: [...p.keywords], location: p.location ?? "", radius_km: p.radius_km ?? null,
+        name: p.name, keywords: [...p.keywords], locations: [...(p.locations ?? [])], radius_km: p.radius_km ?? null,
         employment_type: p.employment_type ?? null, remote: p.remote === true, enabled: p.enabled, schedule_hours: p.schedule_hours ?? null,
       }
     : blank());
@@ -58,7 +58,27 @@ function onSearch(text: string) {
   keywordSearch.value = rest;
 }
 
-const valid = computed(() => props.pluginsLoaded && form.name.trim() !== "" && form.keywords.length > 0 && keywordError.value === null && (usable.value.length === 0 || checked.value.length > 0));
+const locationSearch = ref("");
+const locationError = computed(() => {
+  if (form.locations.length > MAX_LOCATIONS) return t("profiles.locationsTooMany", { max: MAX_LOCATIONS });
+  if (form.locations.some((c) => c.length > MAX_LOCATION_LENGTH)) return t("profiles.locationsTooLong", { max: MAX_LOCATION_LENGTH });
+  return null;
+});
+
+function setLocations(v: string[]) {
+  form.locations = normalizeKeywords(v.flatMap((c) => splitKeywords(c)));
+}
+/** Typed or pasted text containing commas becomes city chips right away. */
+function onLocationSearch(text: string) {
+  locationSearch.value = text;
+  if (!text.includes(",")) return;
+  const parts = text.split(",");
+  const rest = parts.pop() ?? "";
+  setLocations([...form.locations, ...parts]);
+  locationSearch.value = rest;
+}
+
+const valid = computed(() => props.pluginsLoaded && form.name.trim() !== "" && form.keywords.length > 0 && keywordError.value === null && locationError.value === null && (usable.value.length === 0 || checked.value.length > 0));
 
 function submit() {
   if (valid.value) emit("save", toPayload(form, checked.value, props.plugins));
@@ -87,9 +107,26 @@ function submit() {
         />
         <div v-if="keywordError" class="text-error text-caption mb-2" data-test="pf-keywords-error">{{ keywordError }}</div>
         <v-row dense>
-          <v-col cols="8"><v-text-field v-model="form.location" :label="t('profiles.fields.location')" data-test="pf-location" /></v-col>
-          <v-col cols="4">
-            <v-text-field v-model.number="form.radius_km" type="number" min="0" :label="t('profiles.fields.radius')" :disabled="!form.location.trim()" data-test="pf-radius" />
+          <v-col cols="12" sm="8">
+            <v-combobox
+              :model-value="form.locations"
+              :search="locationSearch"
+              multiple
+              chips
+              closable-chips
+              :delimiters="[',']"
+              :items="[]"
+              :hide-no-data="true"
+              :label="t('profiles.fields.locations')"
+              :hint="t('profiles.locationsHint')"
+              data-test="pf-locations"
+              @update:model-value="setLocations"
+              @update:search="onLocationSearch"
+            />
+            <div v-if="locationError" class="text-error text-caption mb-2" data-test="pf-locations-error">{{ locationError }}</div>
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-text-field v-model.number="form.radius_km" type="number" min="0" :label="t('profiles.fields.radius')" :disabled="form.locations.length === 0" data-test="pf-radius" />
           </v-col>
         </v-row>
         <v-select v-model="form.employment_type" :items="employmentItems" :label="t('profiles.fields.employmentType')" data-test="pf-employment" />

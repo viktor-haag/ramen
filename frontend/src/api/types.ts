@@ -225,7 +225,7 @@ export interface StatusChangeIn {
 export interface ProfileIn {
   name: string;
   keywords: string[];
-  location?: string | null;
+  locations?: string[];
   radius_km?: number | null;
   employment_type?: string | null;
   remote?: boolean | null;

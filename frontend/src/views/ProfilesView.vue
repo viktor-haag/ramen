@@ -87,7 +87,7 @@ const scheduleText = (p: ProfileOut) => (p.schedule_hours ? t("profiles.schedule
           <v-chip v-for="k in p.keywords" :key="k" size="small">{{ k }}</v-chip>
           <template v-if="p.keywords.length === 0">–</template>
         </span>
-        <span><strong>{{ t("profiles.fields.location") }}:</strong> {{ p.location || "–" }}<template v-if="p.location && p.radius_km"> (+{{ p.radius_km }} km)</template></span>
+        <span><strong>{{ t("profiles.fields.locations") }}:</strong> {{ p.locations?.length ? p.locations.join(", ") : "–" }}<template v-if="p.locations?.length && p.radius_km"> (+{{ p.radius_km }} km)</template></span>
         <span><strong>{{ t("profiles.fields.schedule") }}:</strong> {{ scheduleText(p) }}</span>
         <span class="d-flex align-center ga-2">
           <strong>{{ t("profiles.lastRun") }}:</strong>

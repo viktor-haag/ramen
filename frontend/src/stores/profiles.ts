@@ -10,7 +10,7 @@ export const SCHEDULE_HOURS = [null, 1, 3, 6, 12, 24] as const;
 export interface ProfileForm {
   name: string;
   keywords: string[];
-  location: string;
+  locations: string[];
   radius_km: number | null;
   employment_type: string | null;
   remote: boolean;
@@ -20,6 +20,8 @@ export interface ProfileForm {
 
 export const MAX_KEYWORDS = 20;
 export const MAX_KEYWORD_LENGTH = 100;
+export const MAX_LOCATIONS = 20;
+export const MAX_LOCATION_LENGTH = 100;
 
 /** Split free text at commas into trimmed, non-empty terms. */
 export function splitKeywords(input: string): string[] {
@@ -60,16 +62,15 @@ export function toPayload(form: ProfileForm, checked: string[], plugins: PluginO
   const usable = plugins.filter(isUsableSearch).map((p) => p.name);
   const selected = usable.filter((n) => checked.includes(n));
   const all = selected.length === usable.length;
-  const text = (s: string) => s.trim() || null;
-  const location = text(form.location);
+  const locations = normalizeKeywords(form.locations);
   const raw: unknown = form.radius_km;
   const num = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
   const radius = Number.isFinite(num) ? num : null;
   return {
     name: form.name.trim(),
     keywords: normalizeKeywords(form.keywords),
-    location,
-    radius_km: location ? radius : null,
+    locations,
+    radius_km: locations.length > 0 ? radius : null,
     employment_type: form.employment_type || null,
     remote: form.remote ? true : null,
     enabled: form.enabled,

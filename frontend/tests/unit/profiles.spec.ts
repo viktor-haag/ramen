@@ -16,7 +16,7 @@ const plugins = [
   plugin("a"), plugin("b"), plugin("off", { enabled: false }), plugin("broken", { error: "boom", capabilities: [] }), plugin("fetcher", { capabilities: ["fetch"] }),
 ];
 const form: ProfileForm = {
-  name: "  Dev ", keywords: [" vue ", "Vue", "Python"], location: "", radius_km: 30, employment_type: null, remote: false, enabled: true, schedule_hours: 6,
+  name: "  Dev ", keywords: [" vue ", "Vue", "Python"], locations: [], radius_km: 30, employment_type: null, remote: false, enabled: true, schedule_hours: 6,
 };
 
 describe("keywords helpers", () => {
@@ -38,17 +38,29 @@ describe("toPayload", () => {
   it("stores an empty plugin list when all enabled plugins are selected", () => {
     const p = toPayload(form, ["a", "b"], plugins);
     expect(p.plugins).toEqual([]);
-    expect(p).toMatchObject({ name: "Dev", keywords: ["vue", "Python"], location: null, radius_km: null, remote: null, schedule_hours: 6 });
+    expect(p).toMatchObject({ name: "Dev", keywords: ["vue", "Python"], locations: [], radius_km: null, remote: null, schedule_hours: 6 });
   });
 
   it("stores the selection otherwise", () => {
-    expect(toPayload({ ...form, location: "Berlin", remote: true }, ["b"], plugins)).toMatchObject({
-      plugins: ["b"], location: "Berlin", radius_km: 30, remote: true,
+    expect(toPayload({ ...form, locations: ["Berlin"], remote: true }, ["b"], plugins)).toMatchObject({
+      plugins: ["b"], locations: ["Berlin"], radius_km: 30, remote: true,
     });
   });
 
+  it("normalizes cities (trim, blanks, case-insensitive dupes) and keeps the radius", () => {
+    const p = toPayload({ ...form, locations: [" Berlin ", "berlin", "", "München", "  "] }, ["a", "b"], plugins);
+    expect(p.locations).toEqual(["Berlin", "München"]);
+    expect(p.radius_km).toBe(30);
+  });
+
+  it("radius is null without cities", () => {
+    const p = toPayload({ ...form, locations: ["  ", ""], radius_km: 30 }, ["a", "b"], plugins);
+    expect(p.locations).toEqual([]);
+    expect(p.radius_km).toBeNull();
+  });
+
   it("empty or invalid radius becomes null, not 0", () => {
-    const f = { ...form, location: "Berlin" };
+    const f = { ...form, locations: ["Berlin"] };
     expect(toPayload({ ...f, radius_km: "" as never }, ["a", "b"], plugins).radius_km).toBeNull();
     expect(toPayload({ ...f, radius_km: Number.NaN }, ["a", "b"], plugins).radius_km).toBeNull();
     expect(toPayload({ ...f, radius_km: 0 }, ["a", "b"], plugins).radius_km).toBe(0);

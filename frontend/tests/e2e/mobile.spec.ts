@@ -7,7 +7,7 @@ test("phone width: no page overflows horizontally", async ({ page, request, base
   const posting = await request.post(`${baseURL}/api/postings`, { data: { title: "Senior Python Developer (m/w/d)", company: "Brightwave GmbH" } });
   expect(posting.ok()).toBeTruthy();
   const profile = await request.post(`${baseURL}/api/profiles`, {
-    data: { name: "Python München", keywords: ["python", "data"], location: "München", radius_km: 50, plugins: ["fake"], schedule_hours: 6 },
+    data: { name: "Python München", keywords: ["python", "data"], locations: ["München"], radius_km: 50, plugins: ["fake"], schedule_hours: 6 },
   });
   expect(profile.ok()).toBeTruthy();
   const { id: profileId } = await profile.json();

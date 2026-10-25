@@ -71,3 +71,24 @@ test("feed: a profile with two keyword chips yields results for both", async ({ 
   await expect(page.getByText("alpha job 1", { exact: true })).toBeVisible();
   await expect(page.getByText("beta job 1", { exact: true })).toBeVisible();
 });
+
+test("feed: a profile with two cities yields results for both", async ({ page }) => {
+  await page.goto("/profiles");
+  await page.locator('[data-test="profile-add"]').click();
+  await page.locator('[data-test="pf-name"] input').fill("Two cities");
+  await page.locator('[data-test="pf-keywords"] input').fill("py");
+  await page.locator('[data-test="pf-keywords"] input').press("Enter");
+  for (const city of ["Berlin", "Hamburg"]) {
+    await page.locator('[data-test="pf-locations"] input').fill(city);
+    await page.locator('[data-test="pf-locations"] input').press("Enter");
+  }
+  await page.locator('[data-test="pf-save"]').click();
+  await expect(page.locator('[data-test="profile-1"]')).toContainText("Berlin, Hamburg");
+
+  await page.goto("/feed");
+  await page.locator('[data-test="refresh"]').click();
+  const rows = page.locator('[data-test="feed-row"]');
+  await expect(rows).toHaveCount(10);
+  await expect(page.getByText("py job 1 @ Berlin", { exact: true })).toBeVisible();
+  await expect(page.getByText("py job 1 @ Hamburg", { exact: true })).toBeVisible();
+});
