@@ -46,7 +46,7 @@ export function toQuery(params: Record<string, unknown>): string {
   return sp.toString();
 }
 
-const BASE = "/api";
+export const BASE = "/api";
 
 async function toError(res: Response): Promise<ApiError> {
   let body: ErrorBody | null = null;

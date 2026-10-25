@@ -39,3 +39,21 @@ test("applications: context menu moves a card and the switch hides the saved col
   await page.getByLabel("Hide saved").click({ force: true });
   await expect(page.locator('.column[data-status="saved"]')).toHaveCount(0);
 });
+
+test("applications: export downloads the visible applications as CSV", async ({ page, request, baseURL }) => {
+  const res = await request.post(`${baseURL}/api/postings`, { data: { title: "Export Me", company: "Acme" } });
+  expect(res.ok()).toBeTruthy();
+
+  await page.goto("/applications");
+  await expect(page.locator('.column[data-status="saved"] [data-id]', { hasText: "Export Me" })).toBeVisible();
+  await page.locator('[data-test="apps-export"]').click();
+  const downloadPromise = page.waitForEvent("download");
+  await page.locator('[data-test="apps-export-csv"]').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.csv$/);
+  const path = await download.path();
+  const { readFileSync } = await import("node:fs");
+  const bytes = readFileSync(path!);
+  expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+  expect(bytes.toString("utf-8")).toContain("Export Me");
+});

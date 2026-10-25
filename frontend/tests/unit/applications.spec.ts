@@ -3,6 +3,7 @@ import { nextTick } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api } from "@/api/client";
 import type { AppStatus, ApplicationOut } from "@/api/types";
+import { i18n } from "@/i18n";
 import { useApplicationsStore } from "@/stores/applications";
 import { useNotifyStore } from "@/stores/notify";
 
@@ -129,5 +130,30 @@ describe("applications store", () => {
     expect(localStorage.getItem("jobtracker.applicationsView")).toBe("table");
     setActivePinia(createPinia());
     expect(useApplicationsStore().view).toBe("table");
+  });
+});
+
+describe("applications store exportUrl", () => {
+  it("reflects showTerminal, hideSaved, q and locale", () => {
+    const s = useApplicationsStore();
+    const u = (f: "csv" | "xlsx") => new URL(s.exportUrl(f), "http://x");
+    let url = u("csv");
+    expect(url.pathname).toBe("/api/applications/export");
+    expect(url.searchParams.get("format")).toBe("csv");
+    expect(url.searchParams.getAll("status")).toEqual(["saved", "preparing", "applied", "interviewing", "offer"]);
+    expect(url.searchParams.has("q")).toBe(false);
+    s.showTerminal = true;
+    s.hideSaved = true;
+    s.q = " vue ";
+    i18n.global.locale.value = "de";
+    url = u("xlsx");
+    expect(url.searchParams.get("format")).toBe("xlsx");
+    expect(url.searchParams.getAll("status")).toHaveLength(7);
+    expect(url.searchParams.getAll("status")).not.toContain("saved");
+    expect(url.searchParams.get("q")).toBe("vue");
+    expect(url.searchParams.get("lang")).toBe("de");
+    s.q = null;
+    expect(u("csv").searchParams.has("q")).toBe(false);
+    i18n.global.locale.value = "en";
   });
 });

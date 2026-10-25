@@ -142,6 +142,7 @@
     "board": "Board",
     "table": "Tabelle",
     "showFinished": "Beendete anzeigen",
+    "export": { "button": "Exportieren", "csv": "CSV (.csv)", "xlsx": "Excel (.xlsx)" },
     "hideSaved": "Gemerkte ausblenden",
     "search": "Suchen",
     "untitled": "Stelle ohne Titel",

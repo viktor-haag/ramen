@@ -41,4 +41,21 @@ describe("ApplicationsView", () => {
     expect((get.mock.calls.at(-1)![1] as { status: string[] }).status).toHaveLength(8);
     w.unmount();
   });
+
+  it("export menu items link to the export endpoint with the current filters", async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/:p(.*)*", component: { render: () => null } }] });
+    const Host = defineComponent({ render: () => h(VLayout, null, () => h(ApplicationsView)) });
+    const w = mount(Host, { global: { plugins: [createPinia(), vuetify, i18n, router] }, attachTo: document.body });
+    await flushPromises();
+    await w.find('[data-test="apps-export"]').trigger("click");
+    await flushPromises();
+    const csv = document.body.querySelector('[data-test="apps-export-csv"]') as HTMLAnchorElement;
+    const xlsx = document.body.querySelector('[data-test="apps-export-xlsx"]') as HTMLAnchorElement;
+    expect(csv.getAttribute("href")).toContain("/api/applications/export?format=csv");
+    expect(csv.getAttribute("href")).toContain("status=offer");
+    expect(csv.getAttribute("href")).not.toContain("rejected");
+    expect(csv.hasAttribute("download")).toBe(true);
+    expect(xlsx.getAttribute("href")).toContain("format=xlsx");
+    w.unmount();
+  });
 });

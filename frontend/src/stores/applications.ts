@@ -1,8 +1,9 @@
 import { defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
-import { api } from "@/api/client";
+import { BASE, api, toQuery } from "@/api/client";
 import type { AppStatus, ApplicationDetailOut, ApplicationOut } from "@/api/types";
 import { ACTIVE_STATUSES, TERMINAL_STATUSES } from "@/domain/status";
+import { i18n } from "@/i18n";
 import { useNotifyStore } from "@/stores/notify";
 
 export type ApplicationsViewMode = "board" | "table";
@@ -73,6 +74,13 @@ export const useApplicationsStore = defineStore("applications", () => {
     return groups;
   });
 
+  /** Download URL for the current view's applications (same filters as the board/table, "saved" dropped when hidden). */
+  function exportUrl(format: "csv" | "xlsx"): string {
+    const status = visibleStatuses.value;
+    const query = toQuery({ format, status, q: (q.value ?? "").trim(), lang: i18n.global.locale.value });
+    return `${BASE}/applications/export?${query}`;
+  }
+
   async function load() {
     const mine = ++generation;
     loading.value = true;
@@ -133,5 +141,5 @@ export const useApplicationsStore = defineStore("applications", () => {
     loading.value = false;
   }
 
-  return { items, showTerminal, hideSaved, view, q, loading, byStatus, visibleStatuses, visibleItems, load, move, reopen, clear };
+  return { items, showTerminal, hideSaved, view, q, loading, byStatus, visibleStatuses, visibleItems, exportUrl, load, move, reopen, clear };
 });
