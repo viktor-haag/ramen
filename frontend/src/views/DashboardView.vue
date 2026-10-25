@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { formatDateTime, relativeTime } from "@/domain/time";
 import { useDashboardStore } from "@/stores/dashboard";
@@ -8,13 +8,7 @@ const { t, locale } = useI18n();
 const store = useDashboardStore();
 onMounted(() => store.load());
 
-// Failed runs older than the "recent" window would otherwise be invisible.
-const extraFailed = computed(() => {
-  const d = store.data;
-  if (!d) return [];
-  const shown = new Set(d.recent_runs.map((r) => r.id));
-  return d.failed_runs.filter((r) => !shown.has(r.id));
-});
+const failed = (status: string) => status === "error" || status === "timeout";
 </script>
 
 <template>
@@ -67,30 +61,17 @@ const extraFailed = computed(() => {
 
     <v-col cols="12" md="6">
       <v-card :title="t('dashboard.runs')" height="100%" data-test="dash-runs">
-        <v-list v-if="extraFailed.length" lines="two" data-test="dash-failed">
-          <v-list-item
-            v-for="r in extraFailed"
-            :key="r.id"
-            class="text-error"
-            data-failed="true"
-            :title="`${r.profile_name ?? '—'} · ${r.plugin}`"
-          >
-            <v-list-item-subtitle class="text-wrap">
-              {{ relativeTime(r.started_at, locale) }} · <span data-test="dash-run-error">{{ r.error || t("dashboard.noError") }}</span>
-            </v-list-item-subtitle>
-          </v-list-item>
-        </v-list>
         <v-list v-if="store.data.recent_runs.length" lines="two">
           <v-list-item
             v-for="r in store.data.recent_runs"
             :key="r.id"
-            :class="{ 'text-error': r.status === 'error' || r.status === 'timeout' }"
-            :data-failed="r.status === 'error' || r.status === 'timeout'"
+            :class="{ 'text-error': failed(r.status) }"
+            :data-failed="failed(r.status)"
             :title="`${r.profile_name ?? '—'} · ${r.plugin}`"
           >
             <v-list-item-subtitle class="text-wrap">
               {{ relativeTime(r.started_at, locale) }} ·
-              <template v-if="r.status === 'error' || r.status === 'timeout'">
+              <template v-if="failed(r.status)">
                 <span data-test="dash-run-error">{{ r.error || t("dashboard.noError") }}</span>
               </template>
               <template v-else>{{ t("dashboard.runResult", { n: r.new_count }) }}</template>
@@ -98,6 +79,12 @@ const extraFailed = computed(() => {
           </v-list-item>
         </v-list>
         <v-card-text v-else class="text-medium-emphasis">{{ t("dashboard.noRuns") }}</v-card-text>
+        <v-card-actions v-if="store.data.older_failed_count" data-test="dash-older-failed">
+          <v-icon icon="mdi-alert-circle-outline" color="error" class="ms-2" />
+          <span class="text-error text-body-2 ms-1">{{ t("dashboard.olderFailed", { n: store.data.older_failed_count }, store.data.older_failed_count) }}</span>
+          <v-spacer />
+          <v-btn to="/profiles" variant="text" size="small">{{ t("dashboard.toHistory") }}</v-btn>
+        </v-card-actions>
       </v-card>
     </v-col>
   </v-row>

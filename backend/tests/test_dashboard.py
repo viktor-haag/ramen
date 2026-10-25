@@ -55,13 +55,24 @@ def run(db, status, started_at, plugin="good"):
     return r
 
 
-def test_dashboard_failed_runs_24h(db):
-    bad = run(db, RunStatus.error, NOW - timedelta(hours=2))
-    slow = run(db, RunStatus.timeout, NOW - timedelta(hours=23))
+def test_dashboard_older_failed_count_24h(db):
+    # only failures of the last 24 h that are not among the 10 recent runs are counted
+    run(db, RunStatus.error, NOW - timedelta(hours=2))
+    run(db, RunStatus.timeout, NOW - timedelta(hours=23))
     run(db, RunStatus.error, NOW - timedelta(hours=25))
-    run(db, RunStatus.ok, NOW - timedelta(hours=1))
+    for i in range(10):
+        run(db, RunStatus.ok, NOW - timedelta(minutes=i))
     out = svc.dashboard(db, NOW)
-    assert {r.id for r in out.failed_runs} == {bad.id, slow.id}
+    assert out.older_failed_count == 2
+    assert all(r.status == RunStatus.ok for r in out.recent_runs)
+
+
+def test_dashboard_recent_failures_are_not_counted_twice(db):
+    run(db, RunStatus.error, NOW - timedelta(minutes=5))
+    run(db, RunStatus.ok, NOW - timedelta(minutes=1))
+    out = svc.dashboard(db, NOW)
+    assert out.older_failed_count == 0
+    assert [r.status for r in out.recent_runs] == [RunStatus.ok, RunStatus.error]  # strictly newest first
 
 
 def test_dashboard_recent_runs_and_new_count(db):
@@ -79,15 +90,15 @@ def test_dashboard_recent_runs_and_new_count(db):
 
 def test_dashboard_endpoint(client):
     body = client.get("/api/dashboard").json()
-    assert body == {"new_count": 0, "upcoming": [], "stale": [], "recent_runs": [], "failed_runs": []}
+    assert body == {"new_count": 0, "upcoming": [], "stale": [], "recent_runs": [], "older_failed_count": 0}
 
 
-def test_dashboard_failed_runs_not_cut_off_by_newer_runs(db):
-    old_fail = run(db, RunStatus.error, NOW - timedelta(hours=20))
+def test_dashboard_older_failed_count_not_cut_off_by_newer_runs(db):
+    run(db, RunStatus.error, NOW - timedelta(hours=20))
     db.add_all(
         SearchRun(plugin="good", trigger=RunTrigger.manual, status=RunStatus.ok,
                   started_at=NOW - timedelta(minutes=i))
         for i in range(250)
     )
     db.commit()
-    assert [r.id for r in svc.dashboard(db, NOW).failed_runs] == [old_fail.id]
+    assert svc.dashboard(db, NOW).older_failed_count == 1

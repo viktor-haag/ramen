@@ -76,6 +76,8 @@
     "noRuns": "No search runs yet.",
     "runResult": "{n} new",
     "noError": "Unknown error",
+    "olderFailed": "{n} more failure in the last 24 h | {n} more failures in the last 24 h",
+    "toHistory": "View history",
     "reload": "Reload",
     "untitled": "Untitled posting"
   },

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import type { PluginOut } from "@/api/types";
-import { normalizeKeywords, splitKeywords, toPayload, useProfilesStore, type ProfileForm } from "@/stores/profiles";
+import { HISTORY_LIMIT, normalizeKeywords, splitKeywords, toPayload, useProfilesStore, type ProfileForm } from "@/stores/profiles";
 
 vi.mock("@/api/client", async (orig) => {
   const mod = await orig<typeof import("@/api/client")>();
@@ -83,5 +83,21 @@ describe("runNow", () => {
     expect(store.results[1]).toEqual({ newCount: 3, failed: 0, alreadyRunning: false });
     expect(store.history[1]).toHaveLength(1);
     vi.useRealTimers();
+  });
+});
+
+describe("profile history", () => {
+  it("keeps only the newest HISTORY_LIMIT runs per profile", async () => {
+    setActivePinia(createPinia());
+    const runs = Array.from({ length: 25 }, (_, i) => ({
+      id: i + 1, profile_id: 1, profile_name: "p", plugin: "a", trigger: "manual", status: "ok",
+      started_at: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(), finished_at: null,
+      new_count: 0, total_count: 0, invalid_count: 0, error: null,
+    }));
+    vi.mocked(api.get).mockImplementation((async (path: string) => (path === "/runs" ? runs : [])) as never);
+    const store = useProfilesStore();
+    await store.load();
+    expect(store.history[1]).toHaveLength(HISTORY_LIMIT);
+    expect(store.history[1][0].id).toBe(25);
   });
 });

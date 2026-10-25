@@ -295,7 +295,7 @@ export interface DashboardOut {
   upcoming: UpcomingOut[];
   stale: ApplicationOut[];
   recent_runs: RunOut[];
-  failed_runs: RunOut[];
+  older_failed_count: number;
 }
 
 // --- LLM / AI settings ---

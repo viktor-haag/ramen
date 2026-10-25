@@ -76,6 +76,8 @@
     "noRuns": "Noch keine Suchläufe.",
     "runResult": "{n} neu",
     "noError": "Unbekannter Fehler",
+    "olderFailed": "{n} weiterer Fehler in den letzten 24 h | {n} weitere Fehler in den letzten 24 h",
+    "toHistory": "Zur Historie",
     "reload": "Neu laden",
     "untitled": "Stelle ohne Titel"
   },

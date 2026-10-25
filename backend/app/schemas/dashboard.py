@@ -16,4 +16,4 @@ class DashboardOut(BaseModel):
     upcoming: list[UpcomingOut]
     stale: list[ApplicationOut]
     recent_runs: list[RunOut]
-    failed_runs: list[RunOut]
+    older_failed_count: int  # failed runs of the last 24 h that are not in recent_runs

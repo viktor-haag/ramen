@@ -3,7 +3,9 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Appointment, Application, AppStatus, Posting, RunStatus, StatusChange, TriageStatus
+from app.models import (
+    Appointment, Application, AppStatus, Posting, RunStatus, SearchRun, StatusChange, TriageStatus,
+)
 from app.schemas.application import AppointmentOut
 from app.schemas.dashboard import DashboardOut, UpcomingOut
 from app.services import profiles
@@ -13,7 +15,6 @@ UPCOMING_DAYS = 7
 STALE_DAYS = 14
 RECENT_RUNS = 10
 FAILED_HOURS = 24
-FAILED_LIMIT = 200
 
 
 def _upcoming(session: Session, now: datetime) -> list[UpcomingOut]:
@@ -55,14 +56,20 @@ def dashboard(session: Session, now: datetime) -> DashboardOut:
     new_count = session.scalar(
         select(func.count()).select_from(Posting).where(Posting.triage_status == TriageStatus.new)
     )
-    failed = profiles.list_runs(
-        session, statuses=(RunStatus.error, RunStatus.timeout),
-        since=now - timedelta(hours=FAILED_HOURS), limit=FAILED_LIMIT,
+    recent = profiles.list_runs(session, limit=RECENT_RUNS)
+    older_failed = session.scalar(
+        select(func.count())
+        .select_from(SearchRun)
+        .where(
+            SearchRun.status.in_((RunStatus.error, RunStatus.timeout)),
+            SearchRun.started_at >= now - timedelta(hours=FAILED_HOURS),
+            SearchRun.id.not_in([r.id for r in recent]),
+        )
     )
     return DashboardOut(
         new_count=new_count or 0,
         upcoming=_upcoming(session, now),
         stale=_stale(session, now),
-        recent_runs=profiles.list_runs(session, limit=RECENT_RUNS),
-        failed_runs=failed,
+        recent_runs=recent,
+        older_failed_count=older_failed or 0,
     )

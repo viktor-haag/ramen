@@ -81,6 +81,9 @@ export function toPayload(form: ProfileForm, checked: string[], plugins: PluginO
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const failedStatus = (r: RunOut) => r.status === "error" || r.status === "timeout";
 
+/** Runs shown per profile in its history. */
+export const HISTORY_LIMIT = 20;
+
 export const useProfilesStore = defineStore("profiles", () => {
   const items = ref<ProfileOut[]>([]);
   const history = ref<Record<number, RunOut[]>>({});
@@ -99,7 +102,10 @@ export const useProfilesStore = defineStore("profiles", () => {
       items.value = profiles;
       const grouped: Record<number, RunOut[]> = {};
       for (const r of runs) if (r.profile_id !== null) (grouped[r.profile_id] ??= []).push(r);
-      for (const list of Object.values(grouped)) list.sort((a, b) => b.started_at.localeCompare(a.started_at));
+      for (const [id, list] of Object.entries(grouped)) {
+        list.sort((a, b) => b.started_at.localeCompare(a.started_at));
+        grouped[Number(id)] = list.slice(0, HISTORY_LIMIT);
+      }
       history.value = grouped;
     } catch (e) {
       notify().error(e);
@@ -108,7 +114,7 @@ export const useProfilesStore = defineStore("profiles", () => {
 
   async function loadHistory(id: number): Promise<RunOut[]> {
     try {
-      const runs = await api.get<RunOut[]>("/runs", { profile_id: id, limit: 20 });
+      const runs = await api.get<RunOut[]>("/runs", { profile_id: id, limit: HISTORY_LIMIT });
       history.value = { ...history.value, [id]: runs };
       return runs;
     } catch (e) {
