@@ -116,6 +116,9 @@ def test_csv_formula_guard(db):
     assert '"\'=HYPERLINK(""x"")"' in text
     assert ";'+1;'@x;" in text
     assert ";'-y;" in text
+    make_app(db, "2", title="\t=x", company="\rfoo")
+    text = export.to_csv(export.export_rows(db, None, None, NOW, "de"), "de").decode("utf-8-sig")
+    assert "'\t=x" in text and "\"'\rfoo\"" in text
 
 
 def test_xlsx_structure(db):
@@ -171,3 +174,20 @@ def test_api_filters_and_validation(client, db):
     assert r.content.decode("utf-8-sig").count("\r\n") == 2
     assert client.get("/api/applications/export?format=pdf").status_code == 422
     assert client.get("/api/applications/export?format=csv&lang=fr").status_code == 422
+
+
+def test_overlong_cells_are_capped(db):
+    make_app(db, title="T", notes="x" * 40_000, url="https://e.com/" + "a" * 2_500)
+    rows = export.export_rows(db, None, None, NOW, "de")
+    limit = export.MAX_CELL_CHARS
+    ws = load_workbook(BytesIO(export.to_xlsx(rows, "de"))).active
+    col = {c: i + 1 for i, c in enumerate(export.COLUMNS)}
+    note = ws.cell(2, col["notes"]).value
+    assert len(note) == limit and note.endswith("…")
+    url_cell = ws.cell(2, col["url"])
+    assert url_cell.hyperlink is None and url_cell.value.startswith("https://e.com/")
+    import csv as _csv
+    text = export.to_csv(rows, "de").decode("utf-8-sig")
+    parsed = list(_csv.reader(text.split("\r\n")[:-1], delimiter=";"))
+    cell = parsed[1][export.COLUMNS.index("notes")]
+    assert len(cell) == limit and cell.endswith("…")

@@ -23,6 +23,8 @@ COLUMNS: tuple[str, ...] = (
     "fit_explanation", "notes",
 )
 DATE_COLUMNS = frozenset({"saved_at", "applied_at", "last_change_at"})
+MAX_CELL_CHARS = 32_767  # Excel's per-cell limit
+MAX_HYPERLINK_CHARS = 2_000  # Excel drops longer hyperlinks
 
 HEADERS: dict[str, dict[str, str]] = {
     "de": {
@@ -68,6 +70,12 @@ WIDTHS = {
 }
 
 
+def _cap(text: str) -> str:
+    if len(text) <= MAX_CELL_CHARS:
+        return text
+    return text[: MAX_CELL_CHARS - 1] + "…"
+
+
 def _fmt(value: datetime, lang: str) -> str:
     return value.astimezone(BERLIN).strftime(DATE_FORMATS[lang])
 
@@ -110,9 +118,9 @@ def _csv_cell(key: str, value: object, lang: str) -> str:
     if isinstance(value, datetime):
         return _fmt(value, lang)
     text = str(value)
-    if text[:1] in ("=", "+", "-", "@"):
+    if text[:1] in ("=", "+", "-", "@", "\t", "\r"):
         text = "'" + text  # formula-injection guard (postings are untrusted input)
-    return text
+    return _cap(text)
 
 
 def to_csv(rows: list[dict[str, object]], lang: str) -> bytes:
@@ -141,10 +149,14 @@ def to_xlsx(rows: list[dict[str, object]], lang: str) -> bytes:
                 cell.value = value.astimezone(BERLIN).replace(tzinfo=None)
                 cell.number_format = XLSX_DATE_FORMATS[lang]
                 continue
-            text = ILLEGAL_CHARACTERS_RE.sub("", str(value))
+            text = _cap(ILLEGAL_CHARACTERS_RE.sub("", str(value)))
             cell.value = text
             cell.data_type = "s"  # never a formula, even if the text starts with "="
-            if key == "url" and text.startswith(("http://", "https://")):
+            if (
+                key == "url"
+                and text.startswith(("http://", "https://"))
+                and len(text) < MAX_HYPERLINK_CHARS
+            ):
                 cell.hyperlink = text
                 cell.font = Font(color="0563C1", underline="single")
             elif key in ("notes", "fit_explanation"):
