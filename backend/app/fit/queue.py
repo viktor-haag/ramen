@@ -35,12 +35,24 @@ BREAKER_THRESHOLD = 3  # consecutive bulk/auto failures with one of BREAKER_CODE
 BREAKER_CODES = frozenset({"llm_timeout", "llm_unavailable", "llm_auth_failed"})
 
 
-def ensure_ready(session: Session) -> None:
-    """409 `profile_missing` without a non-blank profile, 409 `llm_not_configured` without a `fit` config."""
+def ensure_ready(session: Session) -> int | None:
+    """409 `profile_missing` without a non-blank profile, 409 `llm_not_configured` without a `fit` config.
+
+    Returns the id of the `fit` config (for its daily limit).
+    """
     profile = session.get(UserProfile, 1)
     if profile is None or not (profile.profile_markdown or "").strip():
         raise ConflictError("profile_missing", "There is no user profile to evaluate against", {})
-    llm_configs.resolve(session, "fit")
+    return llm_configs.resolve(session, "fit").id
+
+
+def fit_limit_status(session: Session) -> usage.LimitHit | None:
+    """The daily limit that blocks bulk/auto fit: global, or that of the `fit` config (None if not configured)."""
+    try:
+        config_id = llm_configs.resolve(session, "fit").id
+    except ConflictError:  # llm_not_configured: the evaluation itself reports it
+        config_id = None
+    return usage.limit_status(session, utcnow(), config_id)
 
 
 class FitQueue:
@@ -112,12 +124,13 @@ class FitQueue:
             if not settings.fit_auto:
                 return 0
             try:
-                ensure_ready(session)
+                config_id = ensure_ready(session)
             except ConflictError as exc:
                 log.info("auto fit skipped: %s", exc.code)
                 return 0
-            if usage.limit_exceeded(session, utcnow()):
-                log.info("auto fit skipped: daily limit reached")
+            hit = usage.limit_status(session, utcnow(), config_id)
+            if hit is not None:
+                log.info("auto fit skipped: daily limit reached (%s)", hit.scope)
                 return 0
             lang = settings.fit_language
         return self.enqueue(posting_ids, lang=lang, kind="auto")
@@ -245,8 +258,8 @@ class FitQueue:
             if tripped is not None:  # the provider keeps failing: do not spend the rest of the batch on it
                 self._write(posting_id, epoch, status=FitStatus.error, error=tripped)
                 return
-            with self._session_factory() as session:  # R1: bulk and auto respect the daily limit
-                exceeded = usage.limit_exceeded(session, utcnow())
+            with self._session_factory() as session:  # R1: bulk and auto respect the daily limits
+                exceeded = fit_limit_status(session) is not None
             if exceeded:
                 self._write(posting_id, epoch, status=FitStatus.error, error="daily_limit")
                 return

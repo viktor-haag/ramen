@@ -85,7 +85,7 @@ def run_call(
             chars_in=input_chars(system, messages),
         )
         session.commit()
-        exceeded = usage.limit_exceeded(session, datetime.now(UTC))
+        exceeded = usage.limit_exceeded(session, datetime.now(UTC), cfg.id)  # global or this config
     if err is not None:
         raise to_app_error(err, cfg.api_key) from None
     return result, exceeded

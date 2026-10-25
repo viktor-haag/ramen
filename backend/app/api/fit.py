@@ -80,9 +80,13 @@ def evaluate_bulk(
     session: Session = Depends(get_session),
     queue: FitQueue = Depends(get_queue),
 ):
-    ensure_ready(session)
-    if usage.limit_exceeded(session, utcnow()):  # R1: nothing is enqueued
-        raise ConflictError("daily_limit_reached", "The daily LLM usage limit has been reached", {})
+    config_id = ensure_ready(session)
+    hit = usage.limit_status(session, utcnow(), config_id)
+    if hit is not None:  # R1: nothing is enqueued
+        raise ConflictError(
+            "daily_limit_reached", "The daily LLM usage limit has been reached",
+            {"scope": hit.scope, "config_name": hit.config_name},
+        )
     ids = _bulk_candidates(session, request, f)
     session.close()  # no session held while enqueueing (it writes in its own transaction)
     return EnqueueOut(queued=queue.enqueue(ids, lang=lang, kind="bulk"), limit_exceeded=False)
@@ -100,9 +104,9 @@ def evaluate_one(
     session: Session = Depends(get_session),
     queue: FitQueue = Depends(get_queue),
 ):
-    ensure_ready(session)
+    config_id = ensure_ready(session)
     if session.get(Posting, posting_id) is None:
         raise NotFoundError("posting_not_found", "Posting not found", {"posting_id": posting_id})
-    exceeded = usage.limit_exceeded(session, utcnow())  # single evaluations only warn
+    exceeded = usage.limit_exceeded(session, utcnow(), config_id)  # single evaluations only warn
     session.close()  # no session held while enqueueing (it writes in its own transaction)
     return EnqueueOut(queued=queue.enqueue([posting_id], lang=lang, kind="single"), limit_exceeded=exceeded)

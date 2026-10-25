@@ -2,7 +2,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.errors import ConflictError, NotFoundError
+from app.errors import ConflictError, NotFoundError, UnprocessableError
 from app.llm.factory import ConfigData
 from app.models import LLMConfig, LLMProvider, LLMPurpose, LLMPurposeKind, LLMUsage
 from app.schemas.llm import LLMConfigIn, LLMConfigOut, PurposesIn, PurposesOut
@@ -15,13 +15,21 @@ def mask_key(key: str | None) -> str | None:
     return "…" + key[-4:] if len(key) > 4 else "…"
 
 
+def limit_value(cfg: LLMConfig) -> int | float | None:
+    """The stored limit value; a token limit as a whole number (the column is a float)."""
+    value = cfg.daily_limit_value
+    if value is not None and cfg.daily_limit_kind == "tokens":
+        return int(value)
+    return value
+
+
 def to_out(cfg: LLMConfig) -> LLMConfigOut:
     return LLMConfigOut(
         id=cfg.id, name=cfg.name, provider=cfg.provider, base_url=cfg.base_url,
         api_key=mask_key(cfg.api_key), has_api_key=bool(cfg.api_key), model=cfg.model,
         thinking=cfg.thinking, supports_images=cfg.supports_images, extra_body=dict(cfg.extra_body or {}),
         extra_headers=dict(cfg.extra_headers or {}), price_in=cfg.price_in, price_out=cfg.price_out,
-        is_default=cfg.is_default,
+        daily_limit_kind=cfg.daily_limit_kind, daily_limit_value=limit_value(cfg), is_default=cfg.is_default,
     )
 
 
@@ -59,7 +67,15 @@ def _check_name_free(session: Session, name: str, own_id: int | None = None) -> 
         raise _name_taken()
 
 
+def _check_limit(kind: str, price_in: float | None, price_out: float | None) -> None:
+    if kind == "eur" and (price_in is None or price_out is None):
+        raise UnprocessableError(
+            "limit_needs_prices", "A daily limit in EUR needs both prices (input and output)", {}
+        )
+
+
 def create_config(session: Session, data: LLMConfigIn) -> LLMConfig:
+    _check_limit(data.daily_limit_kind, data.price_in, data.price_out)
     _check_name_free(session, data.name)
     first = session.scalar(select(LLMConfig.id).limit(1)) is None
     cfg = LLMConfig(
@@ -69,7 +85,8 @@ def create_config(session: Session, data: LLMConfigIn) -> LLMConfig:
             data.supports_images if data.supports_images is not None else default_supports_images(data.provider)
         ),
         extra_body=data.extra_body, extra_headers=data.extra_headers, price_in=data.price_in,
-        price_out=data.price_out, is_default=first,
+        price_out=data.price_out, daily_limit_kind=data.daily_limit_kind, daily_limit_value=data.daily_limit_value,
+        is_default=first,
     )
     session.add(cfg)
     try:
@@ -82,6 +99,15 @@ def create_config(session: Session, data: LLMConfigIn) -> LLMConfig:
 
 def update_config(session: Session, config_id: int, data: LLMConfigIn) -> LLMConfig:
     cfg = get_config(session, config_id)
+    sent = data.model_fields_set
+    # Omitted prices / limit keep the stored values (like an omitted api_key); explicit null clears a price.
+    price_in = data.price_in if "price_in" in sent else cfg.price_in
+    price_out = data.price_out if "price_out" in sent else cfg.price_out
+    if "daily_limit_kind" in sent:
+        kind, value = data.daily_limit_kind, data.daily_limit_value
+    else:
+        kind, value = cfg.daily_limit_kind, cfg.daily_limit_value
+    _check_limit(kind, price_in, price_out)
     _check_name_free(session, data.name, cfg.id)
     if data.api_key is not None:  # omitted keeps the key, "" clears it
         cfg.api_key = data.api_key or None
@@ -91,7 +117,8 @@ def update_config(session: Session, config_id: int, data: LLMConfigIn) -> LLMCon
         cfg.supports_images = default_supports_images(data.provider)
     cfg.name, cfg.provider, cfg.base_url, cfg.model = data.name, data.provider, data.base_url, data.model
     cfg.thinking, cfg.extra_body, cfg.extra_headers = data.thinking, data.extra_body, data.extra_headers
-    cfg.price_in, cfg.price_out = data.price_in, data.price_out
+    cfg.price_in, cfg.price_out = price_in, price_out
+    cfg.daily_limit_kind, cfg.daily_limit_value = kind, value
     try:
         session.flush()
     except IntegrityError:

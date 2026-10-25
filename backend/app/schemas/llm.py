@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from app.models import LLMProvider, ThinkingLevel
 
+LimitKind = Literal["none", "tokens", "eur"]
+
 
 class LLMConfigIn(BaseModel):
     name: str = Field(min_length=1)
@@ -17,6 +19,10 @@ class LLMConfigIn(BaseModel):
     extra_headers: dict[str, str] = Field(default_factory=dict)
     price_in: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     price_out: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    # Same rules as the global limit (SettingsIn). An EUR limit also needs both prices: checked in the service
+    # (422 `limit_needs_prices`), since on PUT omitted prices keep the stored ones.
+    daily_limit_kind: LimitKind = "none"
+    daily_limit_value: int | float | None = Field(default=None, ge=0, allow_inf_nan=False, validate_default=True)
 
     @field_validator("name", "model")
     @classmethod
@@ -43,6 +49,22 @@ class LLMConfigIn(BaseModel):
     def _check_thinking(cls, value: ThinkingLevel, info: ValidationInfo) -> ThinkingLevel:
         if info.data.get("provider") == LLMProvider.openai_compatible and value != ThinkingLevel.off:
             raise ValueError("thinking is only available for anthropic and openai")
+        return value
+
+    @field_validator("daily_limit_value", mode="after")
+    @classmethod
+    def _limit_value(cls, value: int | float | None, info: ValidationInfo) -> int | float | None:
+        kind = info.data.get("daily_limit_kind")
+        if kind == "none":
+            return None
+        if kind is None:  # kind itself is invalid; reported on its own field
+            return value
+        if not value:
+            raise ValueError("daily_limit_value must be greater than 0 for this limit kind")
+        if kind == "tokens":  # whole tokens
+            if value != int(value):
+                raise ValueError("daily_limit_value must be a whole number of tokens")
+            return int(value)
         return value
 
 
@@ -72,6 +94,8 @@ class LLMConfigOut(BaseModel):
     extra_headers: dict[str, str]
     price_in: float | None
     price_out: float | None
+    daily_limit_kind: LimitKind
+    daily_limit_value: int | float | None
     is_default: bool
 
 
@@ -117,8 +141,20 @@ class UsageTotals(BaseModel):
 
 
 class LimitOut(BaseModel):
-    kind: Literal["none", "tokens", "eur"]
+    kind: LimitKind
     value: float | None
+
+
+class ConfigUsageOut(BaseModel):
+    """Usage of one config; `deleted` is the single row for usage whose config no longer exists."""
+
+    config_id: int | None
+    name: str | None
+    deleted: bool
+    today: UsageTotals
+    month: UsageTotals
+    limit: LimitOut
+    limit_exceeded: bool
 
 
 class UsageOut(BaseModel):
@@ -126,3 +162,4 @@ class UsageOut(BaseModel):
     month: UsageTotals
     limit: LimitOut
     limit_exceeded: bool
+    per_config: list[ConfigUsageOut] = Field(default_factory=list)

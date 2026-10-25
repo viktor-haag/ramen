@@ -371,7 +371,8 @@
     "prompt_not_found": "That prompt does not exist.",
     "profile_missing": "There is nothing to build a profile from yet. Add a document or write a free text first.",
     "profile_edited": "You have edited the profile manually. Regenerating replaces your changes.",
-    "daily_limit_reached": "The daily limit for LLM usage has been reached. Nothing was queued."
+    "daily_limit_reached": "The daily limit for LLM usage has been reached. Nothing was queued.",
+    "limit_needs_prices": "A daily limit in euros needs both prices (input and output)."
   },
   "detail": {
     "back": "Back to applications",

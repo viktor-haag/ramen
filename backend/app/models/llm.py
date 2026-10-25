@@ -26,6 +26,8 @@ class LLMConfig(Base):
     extra_headers: Mapped[dict] = mapped_column(JSON, default=dict)
     price_in: Mapped[float | None]
     price_out: Mapped[float | None]
+    daily_limit_kind: Mapped[str] = mapped_column(default="none", server_default="none")  # none | tokens | eur
+    daily_limit_value: Mapped[float | None]
     is_default: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
