@@ -159,6 +159,7 @@ onUnmounted(() => {
             <v-list-item-subtitle>
               {{ [item.company, item.location].filter(Boolean).join(" · ") }}
               · {{ t("feed.foundAgo", { when: relativeTime(item.first_seen_at, locale) }) }}
+              <span class="d-sm-none" data-test="row-source-xs">· {{ item.source }}</span>
             </v-list-item-subtitle>
             <template #append>
               <!-- phones: no room for the chips; status shows as the row's accent edge -->

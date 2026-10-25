@@ -62,6 +62,7 @@ def dashboard(session: Session, now: datetime) -> DashboardOut:
         .select_from(SearchRun)
         .where(
             SearchRun.status.in_((RunStatus.error, RunStatus.timeout)),
+            SearchRun.profile_id.is_not(None),  # runs of deleted profiles are not in any history
             SearchRun.started_at >= now - timedelta(hours=FAILED_HOURS),
             SearchRun.id.not_in([r.id for r in recent]),
         )

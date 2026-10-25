@@ -51,3 +51,13 @@ class Unpicklable(Exception):
 def test_custom_unpicklable_exception_is_wrapped():
     failure = pickle.loads(pickle.dumps(to_failure(_raised(Unpicklable(thing=object())))))
     assert failure.summary == "Unpicklable: needs a thing"
+
+
+def test_http_status_error_without_host():
+    request = httpx.Request("GET", "/relative")
+    exc = httpx.HTTPStatusError("x", request=request, response=httpx.Response(503, request=request))
+    assert to_failure(_raised(exc)).summary == "HTTP 503 Service Unavailable"
+
+
+def test_base_exception_is_wrapped():
+    assert pickle.loads(pickle.dumps(to_failure(_raised(SystemExit(3))))).summary == "SystemExit: 3"

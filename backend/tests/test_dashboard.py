@@ -2,7 +2,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.models import Appointment, AppStatus, Posting, RunStatus, RunTrigger, SearchRun, StatusChange, TriageStatus
+from app.models import (
+    Appointment, AppStatus, Posting, RunStatus, RunTrigger, SearchProfile, SearchRun, StatusChange, TriageStatus,
+)
 from app.services import dashboard as svc
 from app.services import triage
 
@@ -48,8 +50,15 @@ def test_dashboard_stale_14_days(db):
     assert [a.id for a in svc.dashboard(db, NOW).stale] == [old.id]
 
 
-def run(db, status, started_at, plugin="good"):
-    r = SearchRun(plugin=plugin, trigger=RunTrigger.manual, status=status, started_at=started_at)
+def _profile(db) -> int:
+    p = SearchProfile(name="p", keywords=["py"])
+    db.add(p)
+    db.commit()
+    return p.id
+
+
+def run(db, status, started_at, plugin="good", profile_id=None):
+    r = SearchRun(plugin=plugin, trigger=RunTrigger.manual, status=status, started_at=started_at, profile_id=profile_id)
     db.add(r)
     db.commit()
     return r
@@ -57,9 +66,10 @@ def run(db, status, started_at, plugin="good"):
 
 def test_dashboard_older_failed_count_24h(db):
     # only failures of the last 24 h that are not among the 10 recent runs are counted
-    run(db, RunStatus.error, NOW - timedelta(hours=2))
-    run(db, RunStatus.timeout, NOW - timedelta(hours=23))
-    run(db, RunStatus.error, NOW - timedelta(hours=25))
+    pid = _profile(db)
+    run(db, RunStatus.error, NOW - timedelta(hours=2), profile_id=pid)
+    run(db, RunStatus.timeout, NOW - timedelta(hours=23), profile_id=pid)
+    run(db, RunStatus.error, NOW - timedelta(hours=25), profile_id=pid)
     for i in range(10):
         run(db, RunStatus.ok, NOW - timedelta(minutes=i))
     out = svc.dashboard(db, NOW)
@@ -94,11 +104,22 @@ def test_dashboard_endpoint(client):
 
 
 def test_dashboard_older_failed_count_not_cut_off_by_newer_runs(db):
-    run(db, RunStatus.error, NOW - timedelta(hours=20))
+    run(db, RunStatus.error, NOW - timedelta(hours=20), profile_id=_profile(db))
     db.add_all(
         SearchRun(plugin="good", trigger=RunTrigger.manual, status=RunStatus.ok,
                   started_at=NOW - timedelta(minutes=i))
         for i in range(250)
     )
     db.commit()
+    assert svc.dashboard(db, NOW).older_failed_count == 1
+
+
+def test_dashboard_older_failed_count_ignores_runs_of_deleted_profiles(db):
+    # the "view history" link leads to the profiles page, where such runs cannot be found
+    run(db, RunStatus.error, NOW - timedelta(hours=3))  # profile_id NULL
+    with_profile = SearchRun(plugin="good", trigger=RunTrigger.manual, status=RunStatus.error,
+                             started_at=NOW - timedelta(hours=4), profile_id=_profile(db))
+    db.add(with_profile)
+    for i in range(10):
+        run(db, RunStatus.ok, NOW - timedelta(minutes=i))
     assert svc.dashboard(db, NOW).older_failed_count == 1

@@ -175,7 +175,7 @@ def test_effective_plugins(service, session_factory):
     with session_factory() as s:
         names = {i.name for i in service.effective_plugins(s, s.get(SearchProfile, all_pid))}
     # empty list = all usable SEARCH plugins; broken (error) is excluded
-    assert names == {"good", "hang", "crash", "garbage", "httperror"}
+    assert names == {"good", "hang", "crash", "garbage", "httperror", "sysexit"}
 
 
 def test_none_starts_all_enabled_profiles(service, session_factory):
@@ -327,3 +327,65 @@ def test_close_cancels_delayed_starts(session_factory, registry, pool):
     run = runs(session_factory)["good"]
     assert run.status == RunStatus.error
     assert run.error == '"go": Run cancelled'
+
+
+def test_base_exception_from_plugin_finishes_the_run_and_keeps_the_pool(service, session_factory, pool):
+    pid = add_profile(session_factory, ["sysexit"])
+    service.start_runs([pid], RunTrigger.manual)
+    assert service.wait_idle(30)
+    run = runs(session_factory)["sysexit"]
+    assert run.status == RunStatus.error and run.error == '"py": SystemExit: 3'
+    assert pool._pool.active  # the pool's message thread survived
+    pid2 = add_profile(session_factory, ["good"])
+    service.start_runs([pid2], RunTrigger.manual)
+    assert service.wait_idle(30)
+    assert runs(session_factory)["good"].status == RunStatus.ok
+
+
+def test_closed_pool_refuses_work_instead_of_restarting(registry):
+    p = RunnerPool(1)
+    p.close()
+    with pytest.raises(RuntimeError, match="closed"):
+        p.submit(registry.get("good"), SearchProfileDTO(keywords="py"), {}, 30)
+    assert not p._pool.active
+
+
+def test_replacing_a_dead_pool_resolves_its_stranded_tasks(registry):
+    p = RunnerPool(1)
+    try:
+        stranded = p.submit(registry.get("hang"), SearchProfileDTO(keywords="py"), {}, 600)
+        time.sleep(2)  # let the worker pick it up
+        p._pool.stop()  # the pool dies without resolving everything
+        p.ensure_active()
+        with pytest.raises(Exception) as caught:
+            stranded.result(timeout=30)
+        assert not isinstance(caught.value, TimeoutError)
+    finally:
+        p.close()
+
+
+def test_start_runs_heals_a_dead_pool_first(session_factory, registry):
+    p = RunnerPool(1)
+    try:
+        svc = RunService(session_factory, registry, p)
+        p._pool.stop()
+        p._pool.join()
+        pid = add_profile(session_factory, ["good"])
+        svc.start_runs([pid], RunTrigger.manual)
+        assert svc.wait_idle(60)
+        assert runs(session_factory)["good"].status == RunStatus.ok
+    finally:
+        p.close()
+
+
+def test_keyword_loop_failure_does_not_strand_the_run(session_factory, registry, pool):
+    class BrokenSpacer:
+        def delay(self, key, gap):
+            raise RuntimeError("can't start new thread")
+
+    svc = RunService(session_factory, registry, pool, spacer=BrokenSpacer())
+    pid = add_profile(session_factory, ["good"])
+    svc.start_runs([pid], RunTrigger.manual)
+    assert svc.wait_idle(30)
+    run = runs(session_factory)["good"]
+    assert run.status == RunStatus.error and "can't start new thread" in run.error

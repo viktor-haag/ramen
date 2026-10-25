@@ -55,6 +55,9 @@ class StubPool:
             future.set_result(execute_search(info.module_path, info.class_name, profile.model_dump(), settings))
         return future
 
+    def ensure_active(self) -> None:
+        pass
+
     def release(self) -> None:
         for future in self.open:
             future.set_result([])

@@ -40,7 +40,8 @@ def summarize(exc: BaseException) -> str:
     if isinstance(exc, httpx.HTTPStatusError):
         response = exc.response
         status = f"HTTP {response.status_code} {response.reason_phrase}".rstrip()
-        return f"{status} ({exc.request.url.host})"
+        host = exc.request.url.host
+        return f"{status} ({host})" if host else status
     text = describe(exc)
     if isinstance(exc, httpx.RequestError) and (host := _host(exc)):
         return f"{text} ({host})"

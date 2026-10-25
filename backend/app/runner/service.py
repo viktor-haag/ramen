@@ -111,6 +111,9 @@ class RunService:
         A profile without keywords still gets its runs, finished at once as an error.
         """
         jobs: list[tuple[int, PluginInfo, list[tuple[str, SearchProfileDTO]], dict, int]] = []
+        # a pool that died since the last run is replaced; this also fails tasks it stranded,
+        # which finishes runs that would otherwise stay `running` and block their pair forever
+        self._pool.ensure_active()
         with self._db_lock, self._session_factory() as session:
             stmt = select(SearchProfile)
             if profile_ids is None:
@@ -153,23 +156,38 @@ class RunService:
             with self._agg_lock:
                 self._aggregates[run_id] = _Aggregate([keyword for keyword, _ in dtos], timeout)
             for index, (_, dto) in enumerate(dtos):
-                delay = self._spacer.delay(info.name, info.start_spacing) if self._spacer else 0.0
-                args = (run_id, index, info, dto, plugin_settings, timeout)
-                if delay <= 0:
-                    self._submit(*args)
-                    continue
-                token = object()
-                timer = threading.Timer(delay, self._delayed_submit, args=(token,))
-                timer.daemon = True
-                with self._agg_lock:
-                    closed = self._closed
-                    if not closed:
-                        self._waiting[token] = (timer, args)
-                if closed:
-                    self._fail_keyword(run_id, index, CancelledError())
-                else:
-                    timer.start()
+                try:
+                    self._start_keyword(run_id, index, info, dto, plugin_settings, timeout)
+                except Exception as exc:  # e.g. "can't start new thread": never strand the run
+                    log.exception("Could not start keyword %r of search run %s", dto.keywords, run_id)
+                    self._fail_keyword(run_id, index, exc)
         return run_ids
+
+    def _start_keyword(
+        self, run_id: int, index: int, info: PluginInfo, dto: SearchProfileDTO, settings: dict, timeout: int
+    ) -> None:
+        """Submit now, or after this source's spacing delay via a timer."""
+        delay = self._spacer.delay(info.name, info.start_spacing) if self._spacer else 0.0
+        args = (run_id, index, info, dto, settings, timeout)
+        if delay <= 0:
+            self._submit(*args)
+            return
+        token = object()
+        timer = threading.Timer(delay, self._delayed_submit, args=(token,))
+        timer.daemon = True
+        with self._agg_lock:
+            closed = self._closed
+            if not closed:
+                self._waiting[token] = (timer, args)
+        if closed:
+            self._fail_keyword(run_id, index, CancelledError())
+            return
+        try:
+            timer.start()
+        except BaseException:
+            with self._agg_lock:
+                self._waiting.pop(token, None)
+            raise
 
     def _submit(
         self, run_id: int, index: int, info: PluginInfo, dto: SearchProfileDTO, settings: dict, timeout: int
@@ -193,7 +211,11 @@ class RunService:
         self._keyword_done(run_id, index, failed)
 
     def close(self) -> None:
-        """Cancel keyword starts still waiting for their slot; their runs finish as cancelled."""
+        """Cancel keyword starts still waiting for their slot; they fail as "Run cancelled".
+
+        Keywords already handed to the pool are left to it: pool.close() stops them unresolved,
+        so their runs stay `running` until the next start marks them "Aborted by restart".
+        """
         with self._agg_lock:
             self._closed = True
             waiting, self._waiting = self._waiting, {}
@@ -204,7 +226,9 @@ class RunService:
     def _keyword_done(self, run_id: int, index: int, future: Future) -> None:
         """Pool callback per keyword: the last one of a run records the whole run."""
         with self._agg_lock:
-            aggregate = self._aggregates[run_id]
+            aggregate = self._aggregates.get(run_id)
+            if aggregate is None or aggregate.futures[index] is not None:
+                return  # already recorded (e.g. failed at start, then resolved anyway)
             aggregate.futures[index] = future
             aggregate.remaining -= 1
             if aggregate.remaining:
@@ -220,7 +244,7 @@ class RunService:
             with self._db_lock:
                 try:
                     new_ids = self._record(run_id, outcomes, timeout)
-                except Exception as exc:  # callback exceptions would be swallowed silently
+                except BaseException as exc:  # callback exceptions would be swallowed silently
                     log.exception("Recording outcome of search run %s failed", run_id)
                     self._mark_failed(run_id, exc)
             # After the commit and outside db_lock (the hook takes its own locks and writes to the DB);
@@ -252,7 +276,7 @@ class RunService:
                 try:
                     items.extend(future.result())
                     succeeded = True
-                except Exception as exc:
+                except BaseException as exc:  # never let a BaseException leave a run `running`
                     failures.append((keyword, exc))
                     if isinstance(exc, PluginFailure):
                         log.warning(
@@ -286,7 +310,7 @@ class RunService:
             session.commit()
         return new_ids
 
-    def _mark_failed(self, run_id: int, exc: Exception) -> None:
+    def _mark_failed(self, run_id: int, exc: BaseException) -> None:
         """Best effort, fresh session: the failed one may hold a broken transaction."""
         try:
             with self._session_factory() as session:
