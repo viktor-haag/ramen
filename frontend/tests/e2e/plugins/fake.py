@@ -1,5 +1,5 @@
 """Deterministic plugin for the end-to-end tests: five fixed postings per search term, no network."""
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from app.plugins.base import Capability, Extractor, JobPosting, SearchProfileDTO
 
@@ -21,7 +21,9 @@ class FakeExtractor(Extractor):
     def search(self, profile: SearchProfileDTO, settings) -> list[JobPosting]:
         kw = profile.keywords
         where = f" @ {profile.location}" if profile.location else ""
-        return [_posting(f"{kw}-{i}", f"{kw} job {i}{where}", f"https://fake.test/job/{kw}-{i}") for i in range(1, 6)]
+        # With a city the id and URL carry it, so the same term in two cities yields distinct postings.
+        slug = f"-{quote(profile.location, safe='')}" if profile.location else ""
+        return [_posting(f"{kw}-{i}{slug}", f"{kw} job {i}{where}", f"https://fake.test/job/{kw}-{i}{slug}") for i in range(1, 6)]
 
     def fetch(self, url: str, settings) -> JobPosting:
         # The external id follows the URL, so every URL yields its own posting.
