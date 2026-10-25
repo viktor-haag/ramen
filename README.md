@@ -6,7 +6,8 @@ The name is a self-ironic, recursive-ish acronym for what this tool is about: jo
 
 A personal job tracker for one user, without login, meant to run on your own machine or in your home network.
 
-- **Collects job postings** from job boards through plugins (bundled: Bundesagentur für Arbeit and Arbeitnow),
+- **Collects job postings** from job boards through plugins (bundled: Bundesagentur für Arbeit,
+  Arbeitnow, and LinkedIn, Indeed, Glassdoor, Google Jobs and more via JobSpy),
   on demand or on a schedule, based on your search profiles.
 - **Feed for triage:** go through new postings, save the interesting ones and dismiss the rest.
 - **Applications:** manage saved postings on a board or in a table, with status history, appointments,
@@ -196,6 +197,22 @@ The plugin filters the Arbeitnow feed itself:
 | `max_new_geocodes` | 60 | Maximum new location lookups per keyword search |
 
 The cache file `data/plugin_cache/arbeitnow.sqlite` can be deleted when no search is running.
+
+### JobSpy boards (LinkedIn, Indeed, Glassdoor, Google Jobs, ZipRecruiter, Naukri, Bayt, BDJobs, HelloWork)
+
+Nine plugins based on [JobSpy](https://github.com/speedyapply/JobSpy), one per board. They are **off by default**;
+switch them on under **Settings → Plugins**.
+**Warning:** JobSpy scrapes these boards, which may violate their terms of use, and frequent requests can get your IP
+address or account blocked (especially on LinkedIn) – use a VPN or a proxy and keep the results and search frequency
+low.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `results_wanted` | 25 | Results per search (1–200) |
+| `hours_old` | 72 | Only postings of the last *n* hours (empty = all) |
+| `fetch_description` | off | Load the full description (slower, more requests; not for Indeed and Google Jobs) |
+| `country` | Germany | Country of the board (Indeed and Glassdoor only) |
+| `proxies` | – | Optional proxies, separated by commas or line breaks |
 
 ## AI features (optional)
 

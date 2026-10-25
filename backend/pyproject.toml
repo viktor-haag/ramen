@@ -21,6 +21,7 @@ dependencies = [
     "pypdfium2==5.14.0",  # renders scanned PDF pages for LLM transcription
     "pillow==13.0.0",  # PNG/JPEG encoding and downscaling
     "openpyxl==3.1.5",  # CSV/XLSX export of applications
+    "python-jobspy==1.4.1",  # LinkedIn, Indeed, Glassdoor, ... (JobSpy plugins)
     "tzdata",  # zoneinfo data on Windows (Europe/Berlin day boundary)
 ]
 
