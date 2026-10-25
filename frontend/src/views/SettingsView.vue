@@ -2,6 +2,7 @@
 import { onMounted, reactive } from "vue";
 import { useI18n } from "vue-i18n";
 import type { PluginOut } from "@/api/types";
+import AboutCard from "@/components/AboutCard.vue";
 import AiSettings from "@/components/AiSettings.vue";
 import DangerZone from "@/components/DangerZone.vue";
 import SchemaForm from "@/components/SchemaForm.vue";
@@ -126,6 +127,8 @@ async function toggleEnabled(p: PluginOut, value: boolean | null) {
   </v-expansion-panels>
 
   <AiSettings />
+
+  <AboutCard />
 
   <DangerZone />
 </template>

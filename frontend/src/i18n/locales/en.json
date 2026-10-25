@@ -567,5 +567,26 @@
     "evaluatedAt": "Evaluated on {date}",
     "section": "Fit evaluation",
     "refresh": "Refresh"
+  },
+  "update": {
+    "chip": "Update {version}",
+    "dismiss": "Hide this update"
+  },
+  "about": {
+    "title": "About RAMEN",
+    "installed": "Installed version",
+    "latest": "Latest release",
+    "upToDate": "Up to date",
+    "lastChecked": "Last checked {when}",
+    "never": "Not checked yet",
+    "checkNow": "Check now",
+    "auto": "Check for updates automatically",
+    "disabledByEnv": "Update checks are disabled by the server configuration (JOBTRACKER_UPDATE_CHECK).",
+    "error": {
+      "network": "GitHub could not be reached.",
+      "rate_limited": "GitHub's request limit was reached; trying again later.",
+      "invalid_response": "GitHub sent an unexpected answer.",
+      "http": "GitHub answered with an error ({code})."
+    }
   }
 }

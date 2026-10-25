@@ -36,6 +36,7 @@ beforeEach(() => {
     if (path === "/llm/configs") return [] as never;
     if (path === "/llm/purposes") return { profile: null, fit: null, extraction: null } as never;
     if (path === "/settings") return { fit_auto: false, fit_concurrency: 2, daily_limit_kind: "none", daily_limit_value: null } as never;
+    if (path === "/version") return { current: "0.1.0", latest: "0.1.0", update_available: false, release_url: null, published_at: null, checked_at: null, error: null, enabled: true, disabled_by_env: false } as never;
     if (path === "/llm/usage") {
       const zero = { input_tokens: 0, output_tokens: 0, eur: null };
       return { today: zero, month: zero, limit: { kind: "none", value: null }, limit_exceeded: false } as never;
@@ -54,6 +55,15 @@ async function mountView() {
 }
 
 describe("SettingsView", () => {
+  it("shows the About card between AI settings and the danger zone", async () => {
+    const w = await mountView();
+    const html = w.html();
+    expect(w.find('[data-test="about-card"]').exists()).toBe(true);
+    expect(html.indexOf('data-test="llm-usage"')).toBeLessThan(html.indexOf('data-test="about-card"'));
+    expect(w.get('[data-test="about-installed"]').text()).toContain("0.1.0");
+    w.unmount();
+  });
+
   it("language selection calls setLocale and changes visible texts", async () => {
     const w = await mountView();
     expect(w.find("h1").text()).toBe("Settings");

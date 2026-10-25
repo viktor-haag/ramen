@@ -567,5 +567,26 @@
     "evaluatedAt": "Bewertet am {date}",
     "section": "Fit-Bewertung",
     "refresh": "Aktualisieren"
+  },
+  "update": {
+    "chip": "Update {version}",
+    "dismiss": "Dieses Update ausblenden"
+  },
+  "about": {
+    "title": "Über RAMEN",
+    "installed": "Installierte Version",
+    "latest": "Neuestes Release",
+    "upToDate": "Aktuell",
+    "lastChecked": "Zuletzt geprüft {when}",
+    "never": "Noch nicht geprüft",
+    "checkNow": "Jetzt prüfen",
+    "auto": "Automatisch nach Updates suchen",
+    "disabledByEnv": "Die Update-Prüfung ist in der Serverkonfiguration abgeschaltet (JOBTRACKER_UPDATE_CHECK).",
+    "error": {
+      "network": "GitHub ist nicht erreichbar.",
+      "rate_limited": "Das Abfragelimit von GitHub ist erreicht; später erneut.",
+      "invalid_response": "GitHub hat unerwartet geantwortet.",
+      "http": "GitHub hat mit einem Fehler geantwortet ({code})."
+    }
   }
 }

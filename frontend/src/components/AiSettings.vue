@@ -93,6 +93,7 @@ async function saveSettings() {
       fit_language: settingsDraft.fit_language,
       daily_limit_kind: settingsDraft.kind,
       daily_limit_value: value,
+      update_check: store.settings?.update_check ?? true, // owned by the About card; the PUT is a full body
     },
     visible,
   );

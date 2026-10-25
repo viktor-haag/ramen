@@ -6,10 +6,16 @@ import AddPostingDialog from "@/components/AddPostingDialog.vue";
 import ThemeSwitch from "@/components/ThemeSwitch.vue";
 import RamenBrand from "@/components/RamenBrand.vue";
 import NotifySnackbar from "@/components/NotifySnackbar.vue";
+import UpdateChip from "@/components/UpdateChip.vue";
+import { useVersionStore } from "@/stores/version";
 
 const { t, locale } = useI18n();
 const drawer = ref(true);
 const addOpen = ref(false);
+
+const version = useVersionStore();
+void version.load();
+version.startAutoRefresh();
 
 const items = [
   { to: "/", icon: "mdi-home", key: "nav.dashboard" },
@@ -41,6 +47,7 @@ const locales: Locale[] = ["en", "de"];
       <v-app-bar-nav-icon @click="drawer = !drawer" />
       <v-app-bar-title class="ramen-app-title"><RamenBrand /></v-app-bar-title>
       <v-spacer />
+      <UpdateChip class="mr-2" />
       <v-btn id="add-posting" class="d-none d-sm-inline-flex" variant="tonal" prepend-icon="mdi-plus" @click="addOpen = true">{{ t("addPosting.button") }}</v-btn>
       <v-btn
         class="d-sm-none"

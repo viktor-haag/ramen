@@ -364,6 +364,21 @@ export interface AppSettings {
   fit_language: "en" | "de";
   daily_limit_kind: DailyLimitKind;
   daily_limit_value: number | null;
+  update_check: boolean;
+}
+
+export interface VersionInfo {
+  current: string;
+  latest: string | null;
+  update_available: boolean;
+  release_url: string | null;
+  published_at: string | null;
+  checked_at: string | null;
+  /** `network`, `rate_limited`, `invalid_response` or `http_<status>`; null when the last check worked. */
+  error: string | null;
+  /** The check runs automatically (app setting on and not disabled by the server). */
+  enabled: boolean;
+  disabled_by_env: boolean;
 }
 
 export interface UsageTotals {

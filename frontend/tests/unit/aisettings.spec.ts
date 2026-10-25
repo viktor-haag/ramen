@@ -42,7 +42,7 @@ beforeEach(() => {
   for (const m of [get, post, put, del]) m.mockReset();
   configs = [cfg(), cfg({ id: 2, name: "Local", provider: "openai_compatible", base_url: "http://x/v1", api_key: null, has_api_key: false, supports_images: false, is_default: false })];
   purposes = { profile: null, fit: null, extraction: null };
-  settings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null };
+  settings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true };
   usageData = usage();
   get.mockImplementation(async (path: string) => {
     if (path === "/llm/configs") return configs as never;
@@ -381,12 +381,21 @@ describe("AiSettings", () => {
     await type("[data-test=llm-concurrency] input", "4");
     await click("[data-test=llm-fit-auto] input");
     await click("[data-test=llm-settings-save]");
-    expect(put).toHaveBeenCalledWith("/settings", { fit_auto: true, fit_concurrency: 4, fit_language: "en", daily_limit_kind: "tokens", daily_limit_value: 50000 });
+    expect(put).toHaveBeenCalledWith("/settings", { fit_auto: true, fit_concurrency: 4, fit_language: "en", daily_limit_kind: "tokens", daily_limit_value: 50000, update_check: true });
     selectByTest(w, "llm-limit-kind").vm.$emit("update:modelValue", "none");
     await flushPromises();
     expect(q("[data-test=llm-limit-value]")).toBeNull();
     await click("[data-test=llm-settings-save]");
-    expect(put).toHaveBeenLastCalledWith("/settings", { fit_auto: true, fit_concurrency: 4, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null });
+    expect(put).toHaveBeenLastCalledWith("/settings", { fit_auto: true, fit_concurrency: 4, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true });
+    w.unmount();
+  });
+
+  it("keeps update_check from the loaded settings in the full PUT body", async () => {
+    settings = { ...settings, update_check: false };
+    put.mockImplementation(async (_p: string, b: unknown) => b as never);
+    const w = await mountSettings();
+    await click("[data-test=llm-settings-save]");
+    expect(put).toHaveBeenCalledWith("/settings", expect.objectContaining({ update_check: false }));
     w.unmount();
   });
 
@@ -426,7 +435,7 @@ describe("AiSettings", () => {
 });
 
 describe("llm store save fallbacks", () => {
-  const body: AppSettings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "tokens", daily_limit_value: 1 };
+  const body: AppSettings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "tokens", daily_limit_value: 1, update_check: true };
   const invalid = (field: string) =>
     new ApiError(422, "validation_error", { errors: [{ loc: ["body", field], msg: "bad value", type: "x" }] }, "invalid");
 
