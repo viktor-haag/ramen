@@ -55,6 +55,41 @@ describe("TexEditor", () => {
     w.unmount();
   });
 
+  it("a locked editor swallows clicks on the text: no cursor, no focus; scrolling still works", async () => {
+    const w = mountEditor({ disabled: true, followEnd: true });
+    const view = viewOf(w);
+    const before = view.state.selection.main.anchor;
+    const line = w.find(".cm-line").element;
+    for (const type of ["mousedown", "dblclick", "contextmenu"]) {
+      const ev = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 });
+      line.dispatchEvent(ev);
+      expect(ev.defaultPrevented, type).toBe(true);
+    }
+    expect(view.state.selection.main.anchor).toBe(before);
+    expect(view.hasFocus).toBe(false);
+    expect(w.find(".cm-editor").classes()).toContain("tex-locked");
+    // a press on the scroll container itself (scrollbar) is not swallowed
+    const onScroller = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    view.scrollDOM.dispatchEvent(onScroller);
+    expect(onScroller.defaultPrevented).toBe(false);
+    w.unmount();
+  });
+
+  it("locking drops the focus, unlocking makes the text clickable again", async () => {
+    const w = mountEditor();
+    const view = viewOf(w);
+    view.focus();
+    expect(view.hasFocus).toBe(true);
+    await w.setProps({ disabled: true });
+    expect(view.hasFocus).toBe(false);
+    await w.setProps({ disabled: false });
+    const ev = new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 });
+    w.find(".cm-line").element.dispatchEvent(ev);
+    expect(w.find(".cm-editor").classes()).not.toContain("tex-locked");
+    expect(w.find(".cm-content").attributes("contenteditable")).toBe("true");
+    w.unmount();
+  });
+
   it("highlightLine marks that line", async () => {
     const w = mountEditor({ highlightLine: 2 });
     await flushPromises();

@@ -27,7 +27,7 @@ function info(over: Partial<VersionInfo> = {}): VersionInfo {
   };
 }
 const appSettings: AppSettings = {
-  fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true,
+  fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true, latex_timeout: 180,
 };
 
 beforeEach(() => {

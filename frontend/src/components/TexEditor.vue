@@ -116,7 +116,24 @@ const darkTheme: Extension = [
 ];
 
 const languageExt = () => (props.language === "latex" ? StreamLanguage.define(stex) : []);
-const editableExt = () => [EditorView.editable.of(!props.disabled), EditorState.readOnly.of(!!props.disabled)];
+
+// Locked (while the text streams or a job runs): presses on the text or the gutter set no cursor, no selection
+// and no focus. Presses on the scroll container itself (its scrollbar) and the wheel still scroll. Touch is covered
+// by `user-select: none` plus the non-editable content (CodeMirror registers touch listeners as passive).
+const LOCKED_EVENTS = ["mousedown", "dblclick", "contextmenu", "dragstart"] as const;
+function swallowOnText(event: Event, view: EditorView): boolean {
+  const target = event.target as Node | null;
+  if (!target || target === view.scrollDOM) return false;
+  event.preventDefault();
+  return true;
+}
+const locked: Extension = [
+  EditorView.domEventHandlers(Object.fromEntries(LOCKED_EVENTS.map((type) => [type, swallowOnText]))),
+  EditorView.editorAttributes.of({ class: "tex-locked" }),
+  EditorView.theme({ "&.tex-locked .cm-content, &.tex-locked .cm-gutters": { cursor: "not-allowed", userSelect: "none" } }),
+];
+const editableExt = () =>
+  props.disabled ? [EditorView.editable.of(false), EditorState.readOnly.of(true), locked] : [EditorView.editable.of(true), EditorState.readOnly.of(false)];
 
 onMounted(() => {
   view = new EditorView({
@@ -201,7 +218,14 @@ watch(
   },
 );
 watch(() => props.language, () => view?.dispatch({ effects: languageConf.reconfigure(languageExt()) }));
-watch(() => props.disabled, () => view?.dispatch({ effects: editableConf.reconfigure(editableExt()) }));
+watch(
+  () => props.disabled,
+  (d) => {
+    if (!view) return;
+    view.dispatch({ effects: editableConf.reconfigure(editableExt()) });
+    if (d && view.hasFocus) view.contentDOM.blur();
+  },
+);
 watch(() => props.dark, (d) => view?.dispatch({ effects: themeConf.reconfigure(d ? darkTheme : lightTheme) }));
 watch(() => props.highlightLine, (l) => markLine(l ?? null));
 </script>
