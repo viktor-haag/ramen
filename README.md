@@ -209,10 +209,18 @@ low.
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `results_wanted` | 25 | Results per search (1–200) |
-| `hours_old` | 72 | Only postings of the last *n* hours (empty = all) |
+| `hours_old` | 72 | Only postings of the last *n* hours (`0` = all postings) |
 | `fetch_description` | off | Load the full description (slower, more requests; not for Indeed and Google Jobs) |
 | `country` | Germany | Country of the board (Indeed and Glassdoor only) |
-| `proxies` | – | Optional proxies, separated by commas or line breaks |
+| `proxies` | – | Optional proxies, separated by commas (e.g. `user:password@host:port, host2:port`) |
+
+Notes:
+
+- Without a search radius in the profile, the board's own default applies (e.g. 50 miles on Indeed).
+- Large LinkedIn searches (many results or full descriptions) can exceed the 180 s timeout; raise `timeout_seconds`
+  in the plugin settings if needed.
+- Switching a board on applies to every profile that uses "all plugins", including scheduled searches.
+- The Docker image grows by about 100 MB because of JobSpy and its dependencies (pandas, numpy).
 
 ## AI features (optional)
 
