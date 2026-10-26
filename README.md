@@ -37,7 +37,7 @@ Choose one of the two options. Run all commands from the repository folder.
 
 ```
 conda env create -f environment.yml
-conda activate job_search
+conda activate ramen
 ```
 
 **virtualenv (venv)**
