@@ -5,7 +5,7 @@ Every function works on the given session; the caller commits.
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -46,10 +46,31 @@ def pdf_file(settings: Settings, cl: CoverLetter) -> Path:
     return settings.cover_letters_dir / f"{cl.id}.pdf"
 
 
-def remove_pdf(settings: Settings, cl: CoverLetter) -> None:
-    """Delete the compiled PDF (if any) and clear `pdf_path`/`compiled_at`."""
+_UNLINK_KEY = "cover_letter_unlink"
+
+
+def _unlink_pending(session: Session) -> None:
+    for path in session.info.pop(_UNLINK_KEY, set()):
+        path.unlink(missing_ok=True)
+
+
+def _drop_pending(session: Session) -> None:
+    session.info.pop(_UNLINK_KEY, None)
+
+
+def unlink_after_commit(session: Session, path: Path) -> None:
+    """Delete `path` once the session's current transaction commits (nothing on rollback)."""
+    if not session.info.get(_UNLINK_KEY + "_hooked"):
+        event.listen(session, "after_commit", _unlink_pending)
+        event.listen(session, "after_rollback", _drop_pending)
+        session.info[_UNLINK_KEY + "_hooked"] = True
+    session.info.setdefault(_UNLINK_KEY, set()).add(path)
+
+
+def remove_pdf(session: Session, settings: Settings, cl: CoverLetter) -> None:
+    """Clear `pdf_path`/`compiled_at`; the compiled PDF file (if any) is deleted after the commit."""
     if cl.id is not None:
-        pdf_file(settings, cl).unlink(missing_ok=True)
+        unlink_after_commit(session, pdf_file(settings, cl))
     cl.pdf_path = None
     cl.compiled_at = None
 
@@ -87,7 +108,7 @@ def replace(session: Session, settings: Settings, app_id: int, data: Any) -> Cov
         cl = CoverLetter(application_id=app_id)
         session.add(cl)
     else:
-        remove_pdf(settings, cl)
+        remove_pdf(session, settings, cl)
         cl.messages.clear()
     cl.format = fmt
     cl.template_id = template.id if template is not None else None
@@ -106,7 +127,7 @@ def replace(session: Session, settings: Settings, app_id: int, data: Any) -> Cov
 
 def delete(session: Session, settings: Settings, cl: CoverLetter) -> None:
     """Delete the draft, its history and its PDF."""
-    remove_pdf(settings, cl)
+    remove_pdf(session, settings, cl)
     session.delete(cl)
     session.flush()
 

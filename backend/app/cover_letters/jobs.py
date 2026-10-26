@@ -2,20 +2,21 @@
 
 One worker thread runs the jobs. Every job reads its data in a short session, calls the LLM and the
 compiler without a session, and writes the result in another short session. If the draft disappeared
-meanwhile (application deleted), nothing is written and no PDF file is left behind. Every error ends up
-in `error` as `{code, params, detail}`; `status` always ends `idle`.
+meanwhile (application deleted, or its id reused by a newer draft), nothing is written and no PDF file is
+left behind. Every error ends up in `error` as `{code, params, detail}`; `status` always ends `idle`.
 """
 import logging
 import threading
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
+from datetime import datetime
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
-from app.errors import AppError
+from app.errors import AppError, ConflictError
 from app.latex import guard
 from app.latex.compiler import Compiler, error_excerpt
 from app.models import CoverLetter, CoverLetterMessage
@@ -35,10 +36,19 @@ COMPILE_DETAILS = {
     "latex_unavailable": "No LaTeX compiler is available",
 }
 MISSING_PREFIX = "Not available anymore: "
+REPAIRABLE = ("latex_failed", "latex_forbidden")
 
 
 class _Gone(Exception):
-    """The draft no longer exists: the job ends without writing."""
+    """The job's draft no longer exists (or its id belongs to a newer draft): the job ends without writing."""
+
+
+@dataclass
+class _Ref:
+    """Identity of the job's draft. SQLite may reuse a deleted id, so `created_at` (snapshot in `_load`) must match."""
+
+    id: int
+    created_at: datetime | None = None
 
 
 @dataclass
@@ -126,78 +136,94 @@ class CoverLetterJobs:
             self._futures.discard(future)
 
     def _job(self, fn: Callable[..., None], cl_id: int, *args) -> None:
+        ref = _Ref(cl_id)
         try:
-            fn(cl_id, *args)
+            fn(ref, *args)
         except _Gone:
             log.info("cover letter %s was deleted while its job ran", cl_id)
         except AppError as exc:
-            self._fail(cl_id, {"code": exc.code, "params": exc.params, "detail": exc.detail})
+            self._fail(ref, {"code": exc.code, "params": exc.params, "detail": exc.detail})
         except Exception:
             log.exception("cover letter job for %s failed", cl_id)
-            self._fail(cl_id, dict(INTERNAL))
+            self._fail(ref, dict(INTERNAL))
 
-    def _fail(self, cl_id: int, error: dict) -> None:
+    def _fail(self, ref: _Ref, error: dict) -> None:
         try:
-            self._write(cl_id, status=CoverLetterStatus.idle, error=error)
+            self._write(ref, status=CoverLetterStatus.idle, error=error)
         except _Gone:
             pass
         except Exception:
-            log.exception("could not record the failed cover letter job for %s", cl_id)
+            log.exception("could not record the failed cover letter job for %s", ref.id)
+
+    def _get(self, session: Session, ref: _Ref) -> CoverLetter:
+        """The job's draft; `_Gone` if it was deleted or its id now belongs to a newer draft."""
+        cl = session.get(CoverLetter, ref.id)
+        if cl is None or (ref.created_at is not None and cl.created_at != ref.created_at):
+            raise _Gone
+        return cl
 
     # --- jobs ---------------------------------------------------------------------------------------
 
-    def _generate(self, cl_id: int) -> None:
-        draft = self._load(cl_id, CoverLetterStatus.generating, with_context=True)
+    def _generate(self, ref: _Ref) -> None:
+        draft = self._load(ref, CoverLetterStatus.generating, with_context=True)
         template = draft.template_content if draft.fmt == CoverLetterFormat.latex else None
         answer = self._call(draft, cover_letter_llm.generate_text(draft.ctx, template))
-        self._apply(cl_id, draft, answer, hint=True)
-        self._finish(cl_id, draft, auto_repair=True)
+        self._apply(ref, draft, answer, hint=True)
+        self._finish(ref, draft, auto_repair=True)
 
-    def _revise(self, cl_id: int, instruction: str) -> None:
-        draft = self._load(cl_id, CoverLetterStatus.generating, with_context=True)
+    def _revise(self, ref: _Ref, instruction: str) -> None:
+        draft = self._load(ref, CoverLetterStatus.generating, with_context=True)
         answer = self._call(draft, cover_letter_llm.revise_text(draft.ctx, draft.content, instruction))
-        self._apply(cl_id, draft, answer, hint=True)
-        self._finish(cl_id, draft, auto_repair=True)
+        self._apply(ref, draft, answer, hint=True)
+        self._finish(ref, draft, auto_repair=True)
 
-    def _repair(self, cl_id: int) -> None:
-        draft = self._load(cl_id, CoverLetterStatus.generating, with_context=True)
+    def _repair(self, ref: _Ref) -> None:
+        draft = self._load(ref, CoverLetterStatus.generating, with_context=False)
         error = draft.error or {}
+        if draft.fmt != CoverLetterFormat.latex or error.get("code") not in REPAIRABLE:
+            raise ConflictError("cover_letter_nothing_to_repair", "There is no compile error to repair")
+        self._add_context(ref, draft)
         params = error.get("params") or {}
-        if error.get("code") == "latex_forbidden" and "command" in params:
+        if error["code"] == "latex_forbidden" and "command" in params:
             text = cover_letter_llm.forbidden_text(draft.ctx, draft.content, params["command"], params.get("line", 0))
         else:
             text = cover_letter_llm.repair_text(draft.ctx, draft.content, draft.compile_log or "")
         answer = self._call(draft, text)
-        self._apply(cl_id, draft, answer, hint=True)
-        self._finish(cl_id, draft, auto_repair=False)
+        self._apply(ref, draft, answer, hint=True)
+        self._finish(ref, draft, auto_repair=False)
 
-    def _compile_only(self, cl_id: int) -> None:
-        draft = self._load(cl_id, CoverLetterStatus.compiling, with_context=False)
-        self._finish(cl_id, draft, auto_repair=False)
+    def _compile_only(self, ref: _Ref) -> None:
+        draft = self._load(ref, CoverLetterStatus.compiling, with_context=False)
+        self._finish(ref, draft, auto_repair=False)
 
     # --- steps --------------------------------------------------------------------------------------
 
-    def _load(self, cl_id: int, status: CoverLetterStatus, *, with_context: bool) -> _Draft:
-        """Read the draft and mark it busy; with `with_context` also build the LLM context and system prompt."""
+    def _load(self, ref: _Ref, status: CoverLetterStatus, *, with_context: bool) -> _Draft:
+        """Snapshot the draft and its identity and mark it busy; optionally build the LLM context."""
         with self._session_factory() as session:
-            cl = session.get(CoverLetter, cl_id)
+            cl = session.get(CoverLetter, ref.id)
             if cl is None:
                 raise _Gone
+            ref.created_at = cl.created_at
             draft = _Draft(cl.format.value, cl.template_content, cl.content, cl.error, cl.compile_log)
             cl.status = status
             session.commit()
-            if with_context:
-                ctx = cover_letter_llm.build_context(session, cl.application, cl.context or {})
-                draft.ctx = ctx
-                draft.system = cover_letter_llm.system(session, draft.fmt, cl.language.value)
-            return draft
+        if with_context:
+            self._add_context(ref, draft)
+        return draft
+
+    def _add_context(self, ref: _Ref, draft: _Draft) -> None:
+        with self._session_factory() as session:
+            cl = self._get(session, ref)
+            draft.ctx = cover_letter_llm.build_context(session, cl.application, cl.context or {})
+            draft.system = cover_letter_llm.system(session, draft.fmt, cl.language.value)
 
     def _call(self, draft: _Draft, user_text: str) -> Answer:
         # `limit_exceeded` is ignored: the router checks the limit before each job
         return self._ask(self._session_factory, draft.system, user_text, draft.fmt)
 
-    def _apply(self, cl_id: int, draft: _Draft, answer: Answer, *, hint: bool = False) -> None:
-        """Store the new content and the note; the old PDF no longer matches the content."""
+    def _apply(self, ref: _Ref, draft: _Draft, answer: Answer, *, hint: bool = False) -> None:
+        """Store the new content and the note; the old PDF, error and compile log no longer match it."""
         messages = [answer.note] if answer.note else []
         if hint and draft.ctx is not None:
             missing = list(draft.ctx.missing_documents) + (["profile"] if draft.ctx.missing_profile else [])
@@ -206,19 +232,16 @@ class CoverLetterJobs:
         latex = draft.fmt == CoverLetterFormat.latex
         draft.content = answer.document
         with self._session_factory() as session:
-            cl = session.get(CoverLetter, cl_id)
-            if cl is None:
-                raise _Gone
+            cl = self._get(session, ref)
             cl.content = answer.document
             for text in messages:
                 cl.messages.append(CoverLetterMessage(role=MessageRole.assistant, text=text))
-            remove_pdf(self._settings, cl)
+            remove_pdf(session, self._settings, cl)
             cl.status = CoverLetterStatus.compiling if latex else CoverLetterStatus.idle
-            if not latex:
-                cl.error, cl.compile_log = None, None
+            cl.error, cl.compile_log = None, None
             session.commit()
 
-    def _finish(self, cl_id: int, draft: _Draft, *, auto_repair: bool) -> None:
+    def _finish(self, ref: _Ref, draft: _Draft, *, auto_repair: bool) -> None:
         """Latex only: guard, compile, and (with `auto_repair`) one repair per error kind."""
         if draft.fmt != CoverLetterFormat.latex:
             return
@@ -229,9 +252,9 @@ class CoverLetterJobs:
                 if not repaired_forbidden:
                     repaired_forbidden = True
                     text = cover_letter_llm.forbidden_text(draft.ctx, draft.content, violation.command, violation.line)
-                    self._apply(cl_id, draft, self._call(draft, text))
+                    self._apply(ref, draft, self._call(draft, text))
                     continue
-                self._compile_failed(cl_id, {
+                self._compile_failed(ref, {
                     "code": "latex_forbidden",
                     "params": {"command": violation.command, "line": violation.line},
                     "detail": f"Line {violation.line} uses the forbidden command {violation.command}",
@@ -239,26 +262,24 @@ class CoverLetterJobs:
                 return
             result = self.compiler.compile(draft.content)
             if result.error_code is None and result.pdf is not None:
-                self._compiled(cl_id, result.pdf)
+                self._compiled(ref, result.pdf)
                 return
             code = result.error_code or "latex_failed"
             excerpt = error_excerpt(result.log) if result.log else None
             if code == "latex_failed" and not repaired_failed:
                 repaired_failed = True
                 text = cover_letter_llm.repair_text(draft.ctx, draft.content, excerpt or "")
-                self._apply(cl_id, draft, self._call(draft, text))
+                self._apply(ref, draft, self._call(draft, text))
                 continue
             self._compile_failed(
-                cl_id, {"code": code, "params": {}, "detail": COMPILE_DETAILS.get(code, "Compiling failed")}, excerpt
+                ref, {"code": code, "params": {}, "detail": COMPILE_DETAILS.get(code, "Compiling failed")}, excerpt
             )
             return
 
-    def _compiled(self, cl_id: int, pdf: bytes) -> None:
+    def _compiled(self, ref: _Ref, pdf: bytes) -> None:
         """Write the PDF while holding the write transaction, so a concurrent delete cannot orphan the file."""
         with self._session_factory() as session:
-            cl = session.get(CoverLetter, cl_id)
-            if cl is None:
-                raise _Gone
+            cl = self._get(session, ref)
             path = pdf_file(self._settings, cl)
             cl.pdf_path = path.name
             cl.compiled_at = utcnow()
@@ -266,7 +287,10 @@ class CoverLetterJobs:
             cl.error = None
             cl.compile_log = None
             try:
-                session.flush()  # takes the SQLite write lock; the row is known to exist
+                session.flush()  # takes the SQLite write lock
+                current = session.scalar(select(CoverLetter.created_at).where(CoverLetter.id == ref.id))
+                if current != ref.created_at:  # re-checked under the lock: still our draft
+                    raise _Gone
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(pdf)
                 session.commit()
@@ -274,16 +298,14 @@ class CoverLetterJobs:
                 path.unlink(missing_ok=True)
                 raise
 
-    def _compile_failed(self, cl_id: int, error: dict, compile_log: str | None) -> None:
-        self._write(cl_id, status=CoverLetterStatus.idle, error=error, compile_log=compile_log, drop_pdf=True)
+    def _compile_failed(self, ref: _Ref, error: dict, compile_log: str | None) -> None:
+        self._write(ref, status=CoverLetterStatus.idle, error=error, compile_log=compile_log, drop_pdf=True)
 
-    def _write(self, cl_id: int, *, drop_pdf: bool = False, **fields) -> None:
+    def _write(self, ref: _Ref, *, drop_pdf: bool = False, **fields) -> None:
         with self._session_factory() as session:
-            cl = session.get(CoverLetter, cl_id)
-            if cl is None:
-                raise _Gone
+            cl = self._get(session, ref)
             for name, value in fields.items():
                 setattr(cl, name, value)
             if drop_pdf:
-                remove_pdf(self._settings, cl)
+                remove_pdf(session, self._settings, cl)
             session.commit()

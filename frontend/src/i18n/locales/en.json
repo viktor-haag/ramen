@@ -364,6 +364,7 @@
     "cover_letter_not_found": "This application has no cover letter yet.",
     "cover_letter_busy": "The cover letter is still being generated or compiled. Wait until it has finished.",
     "cover_letter_interrupted": "Interrupted by a restart. Start it again.",
+    "cover_letter_nothing_to_repair": "There is no compile error to fix.",
     "template_not_found": "Template not found.",
     "internal_error": "An unexpected error occurred.",
     "unsupported_document_type": "This file type is not supported. Use PDF, PNG, JPG, WEBP, TXT or MD.",

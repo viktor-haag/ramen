@@ -1,4 +1,5 @@
 """Cover letter state service and background jobs (spec 5.3-5.6), with a fake LLM and a fake compiler."""
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -313,6 +314,83 @@ def test_application_deleted_during_compile(sf, settings, make_jobs):
     assert list(settings.cover_letters_dir.iterdir()) == []
 
 
+def replace_with_new_draft_same_id(sf, cl_id):
+    """Delete the job's draft (via its application) and create a newer draft that reuses the same id."""
+    with sf() as s:
+        s.delete(s.scalars(select(Application)).one())
+        s.commit()
+        posting = Posting(source="s", external_id="new", title="Other", company="Beta")
+        application = Application(posting=posting)
+        s.add_all([posting, application])
+        s.flush()
+        s.add(CoverLetter(
+            id=cl_id, application_id=application.id, format=CoverLetterFormat.latex,
+            language=CoverLetterLanguage.en, template_content=TEMPLATE, content="NEW", status=CoverLetterStatus.idle,
+            created_at=datetime(2020, 1, 1, tzinfo=UTC),
+        ))
+        s.commit()
+
+
+def assert_new_draft_untouched(sf, settings, cl_id):
+    cl = load(sf, cl_id)
+    assert cl is not None and cl.content == "NEW" and cl.messages == []
+    assert cl.status == CoverLetterStatus.idle and cl.error is None and cl.pdf_path is None
+    assert not (settings.cover_letters_dir / f"{cl_id}.pdf").exists()
+
+
+def test_stale_job_does_not_write_into_reused_id_during_ask(sf, settings, make_jobs):
+    cl_id = seed(sf)
+    ask = FakeAsk(answer(), on_call=lambda: replace_with_new_draft_same_id(sf, cl_id))
+    compiler = FakeCompiler(ok())
+    run(make_jobs(ask, compiler), "generate", cl_id)
+    assert_new_draft_untouched(sf, settings, cl_id)
+    assert compiler.calls == []
+
+
+def test_stale_job_does_not_write_into_reused_id_during_compile(sf, settings, make_jobs):
+    cl_id = seed(sf)
+
+    class ReplacingCompiler(FakeCompiler):
+        def compile(self, tex):
+            replace_with_new_draft_same_id(sf, cl_id)
+            return super().compile(tex)
+
+    run(make_jobs(FakeAsk(answer()), ReplacingCompiler(ok())), "generate", cl_id)
+    assert_new_draft_untouched(sf, settings, cl_id)
+
+
+def test_stale_job_failure_is_not_recorded_on_reused_id(sf, settings, make_jobs):
+    cl_id = seed(sf)
+
+    def replace_then_fail():
+        replace_with_new_draft_same_id(sf, cl_id)
+        raise UpstreamError("llm_timeout", "slow", {})
+
+    run(make_jobs(FakeAsk(answer(), on_call=replace_then_fail)), "generate", cl_id)
+    assert_new_draft_untouched(sf, settings, cl_id)
+
+
+def test_new_content_clears_stale_error_and_log(sf, make_jobs):
+    cl_id = seed(sf, content=LETTER, status=CoverLetterStatus.idle)
+    with sf() as s:
+        cl = s.get(CoverLetter, cl_id)
+        cl.error, cl.compile_log = {"code": "latex_failed", "params": {}, "detail": "x"}, "! old log"
+        s.commit()
+    ask = FakeAsk(answer(FIXED), UpstreamError("llm_timeout", "slow", {}))  # the auto-repair call fails
+    run(make_jobs(ask, FakeCompiler(CompileResult(None, None, "latex_failed"))), "revise", cl_id, "x")
+    cl = load(sf, cl_id)
+    assert cl.error["code"] == "llm_timeout" and cl.compile_log is None and cl.content == FIXED
+
+
+def test_repair_text_draft_has_nothing_to_repair(sf, make_jobs):
+    cl_id = seed(sf, fmt=CoverLetterFormat.text, content="Dear team", status=CoverLetterStatus.idle)
+    ask = FakeAsk()
+    run(make_jobs(ask), "repair", cl_id)
+    cl = load(sf, cl_id)
+    assert ask.calls == [] and cl.status == CoverLetterStatus.idle and cl.content == "Dear team"
+    assert cl.error["code"] == "cover_letter_nothing_to_repair"
+
+
 def test_missing_document_and_profile_hint(sf, make_jobs):
     with sf() as s:
         s.add(ProfileDocument(filename="f", display_name="cv.pdf", stored_path="p", mime="text/plain",
@@ -418,6 +496,22 @@ def test_replace_new_text_and_unknown_template(sf, settings):
         cl = cover_letters.replace(s, settings, application.id, data("text"))
         s.commit()
         assert cl.format == CoverLetterFormat.text and cl.template_content is None and cl.template_id is None
+
+
+def test_pdf_removed_only_after_commit(sf, settings):
+    cl_id = seed(sf, status=CoverLetterStatus.idle)
+    settings.cover_letters_dir.mkdir(parents=True, exist_ok=True)
+    pdf = settings.cover_letters_dir / f"{cl_id}.pdf"
+    pdf.write_bytes(PDF)
+    with sf() as s:
+        cover_letters.delete(s, settings, s.get(CoverLetter, cl_id))
+        assert pdf.exists()  # not yet committed
+        s.rollback()
+    assert pdf.exists() and load(sf, cl_id) is not None
+    with sf() as s:
+        cover_letters.delete(s, settings, s.get(CoverLetter, cl_id))
+        s.commit()  # an earlier rollback on this session must not have dropped the hook
+    assert not pdf.exists()
 
 
 def test_delete_removes_pdf(sf, settings):
