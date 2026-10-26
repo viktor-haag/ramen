@@ -27,10 +27,12 @@ from app.api import (
     version as version_api,
 )
 from app.config import Settings
+from app.cover_letters.jobs import CoverLetterJobs
 from app.db import make_engine, make_session_factory
 from app.db_migrate import upgrade
 from app.errors import install_handlers
 from app.fit.queue import FitQueue
+from app.latex.compiler import TectonicCompiler
 from app.plugins.loader import discover_plugins
 from app.plugins.registry import PluginRegistry
 from app.runner.pool import RunnerPool
@@ -49,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.attachments_dir.mkdir(parents=True, exist_ok=True)
+    settings.cover_letters_dir.mkdir(parents=True, exist_ok=True)
     engine = make_engine(settings.db_url)
 
     @asynccontextmanager
@@ -58,6 +61,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.fit_queue = fit_queue
         with app.state.session_factory() as session:
             fit_queue.recover(session)
+            session.commit()
+        cover_letter_jobs = CoverLetterJobs(
+            app.state.session_factory, settings, TectonicCompiler.from_settings(settings)
+        )
+        app.state.cover_letter_jobs = cover_letter_jobs
+        with app.state.session_factory() as session:
+            cover_letter_jobs.recover(session)
             session.commit()
         pool = RunnerPool(settings.pool_size)  # workers start lazily on the first run
         app.state.runner_pool = pool
@@ -81,6 +91,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.run_service.close()
             pool.close()
             fit_queue.shutdown()
+            cover_letter_jobs.shutdown()
             engine.dispose()
 
     app = FastAPI(title="RAMEN", version=__version__, lifespan=lifespan)
