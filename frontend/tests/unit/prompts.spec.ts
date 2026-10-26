@@ -31,6 +31,7 @@ beforeEach(() => {
     prompt("fit", { fixed_text: "Answer as {{\"score\": 1}}.\n{language_line}" }),
     prompt("profile", { fixed_text: "Return JSON." }),
     prompt("extraction"),
+    prompt("cover_letter", { fixed_text: "{language_line}\n{format_line}" }),
   ];
   get.mockImplementation(async (path: string) => {
     if (path === "/prompts") return items as never;
@@ -63,10 +64,20 @@ const saveBtn = () => q<HTMLButtonElement>('[data-test="prompt-save"]')!;
 const resetBtn = () => q<HTMLButtonElement>('[data-test="prompt-reset"]')!;
 
 describe("PromptsCard", () => {
-  it("renders three tabs and starts on fit", async () => {
+  it("shows the cover letter tab with readable placeholders", async () => {
+    await mountCard();
+    await click('[data-test="prompt-tab-cover_letter"]');
+    expect(area().value).toBe("cover_letter text");
+    expect(q('[data-test="prompt-tab-cover_letter"]')!.textContent).toContain("Cover letter");
+    const fixed = q('[data-test="prompt-fixed"]')!.textContent!;
+    expect(fixed).not.toContain("{format_line}");
+    expect(fixed).not.toContain("{language_line}");
+  });
+
+  it("renders four tabs and starts on fit", async () => {
     await mountCard();
     expect(q('[data-test="prompts-card"]')).not.toBeNull();
-    for (const p of ["fit", "profile", "extraction"]) expect(q(`[data-test="prompt-tab-${p}"]`)).not.toBeNull();
+    for (const p of ["fit", "profile", "extraction", "cover_letter"]) expect(q(`[data-test="prompt-tab-${p}"]`)).not.toBeNull();
     expect(area().value).toBe("fit text");
     expect(saveBtn().disabled).toBe(true);
   });

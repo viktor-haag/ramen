@@ -450,10 +450,12 @@
     "tabs": {
       "fit": "Fit-Bewertung",
       "profile": "Profilerstellung",
-      "extraction": "Texterkennung"
+      "extraction": "Texterkennung",
+      "cover_letter": "Anschreiben"
     },
     "fixed": "Wird immer angehängt",
-    "languageLine": "(Sprachvorgabe der Bewertung)",
+    "languageLine": "(Sprachvorgabe)",
+    "formatLine": "(Vorgabe zum Ausgabeformat)",
     "customized": "angepasst",
     "reset": "Auf Standard zurücksetzen",
     "resetConfirm": "Eigenen Prompt verwerfen und den Standard verwenden?",

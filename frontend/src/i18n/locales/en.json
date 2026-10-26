@@ -450,10 +450,12 @@
     "tabs": {
       "fit": "Fit rating",
       "profile": "Profile creation",
-      "extraction": "Text recognition"
+      "extraction": "Text recognition",
+      "cover_letter": "Cover letter"
     },
     "fixed": "Always appended",
     "languageLine": "(language instruction)",
+    "formatLine": "(output format instruction)",
     "customized": "customized",
     "reset": "Reset to default",
     "resetConfirm": "Discard your own prompt and use the default?",

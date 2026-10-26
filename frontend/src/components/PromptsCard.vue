@@ -12,10 +12,10 @@ const { t, locale } = useI18n();
 const store = usePromptsStore();
 const notify = useNotifyStore();
 
-const purposes = ["fit", "profile", "extraction"] as const;
+const purposes = ["fit", "profile", "extraction", "cover_letter"] as const;
 const tab = ref<PromptPurpose>("fit");
 // One draft per tab, so switching tabs never loses edits.
-const drafts = reactive<Record<PromptPurpose, string>>({ fit: "", profile: "", extraction: "" });
+const drafts = reactive<Record<PromptPurpose, string>>({ fit: "", profile: "", extraction: "", cover_letter: "" });
 const saving = ref(false);
 const confirmOpen = ref(false);
 const resetting = ref(false);
@@ -43,7 +43,7 @@ const rules = [(v: string) => v.length <= MAX_PROMPT_CHARS || t("prompts.tooLong
 
 /** The raw fixed part reads naturally: placeholder -> localized hint, doubled braces -> single. */
 function fixedText(p: PromptOut): string {
-  return p.fixed_text.replaceAll("{language_line}", t("prompts.languageLine")).replaceAll("{{", "{").replaceAll("}}", "}");
+  return p.fixed_text.replaceAll("{language_line}", t("prompts.languageLine")).replaceAll("{format_line}", t("prompts.formatLine")).replaceAll("{{", "{").replaceAll("}}", "}");
 }
 
 async function save() {

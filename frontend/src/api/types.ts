@@ -459,7 +459,7 @@ export interface ErrorBody {
   detail?: unknown;
 }
 
-export type PromptPurpose = "fit" | "profile" | "extraction";
+export type PromptPurpose = "fit" | "profile" | "extraction" | "cover_letter";
 
 export interface PromptOut {
   purpose: PromptPurpose;
