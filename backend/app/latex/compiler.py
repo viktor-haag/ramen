@@ -4,7 +4,9 @@ The compiler compiles whatever it is given; callers must run ``guard.check`` fir
 """
 
 import os
+import re
 import shutil
+import signal
 import subprocess
 import tempfile
 import threading
@@ -68,38 +70,86 @@ class TectonicCompiler:
     def available(self) -> bool:
         return self.executable is not None and self.executable.exists()
 
+    def _env(self) -> dict[str, str]:
+        keep = ["PATH", "HOME", "USERPROFILE", "TEMP", "TMP", "TMPDIR", "SYSTEMROOT", "LANG", "LC_ALL"]
+        env = {k: os.environ[k] for k in keep if k in os.environ}
+        env["TECTONIC_UNTRUSTED_MODE"] = "1"
+        env["TECTONIC_CACHE_DIR"] = str(self.cache_dir)
+        return env
+
+    def _mask(self, log: str, tmp: str) -> str:
+        variants: list[tuple[str, str]] = []
+        for base, label in ((tmp, "<tmp>"), (str(self.cache_dir), "<cache>")):
+            p = Path(base)
+            for v in {base, p.as_posix(), str(p.resolve()), p.resolve().as_posix()}:
+                variants.append((v, label))
+        variants.sort(key=lambda t: len(t[0]), reverse=True)
+        for v, label in variants:
+            if os.name == "nt":
+                log = re.sub(re.escape(v), lambda _m, lb=label: lb, log, flags=re.IGNORECASE)
+            else:
+                log = log.replace(v, label)
+        return log
+
+    @staticmethod
+    def _kill_tree(proc: subprocess.Popen) -> None:
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    capture_output=True,
+                    timeout=10,
+                )
+            else:
+                os.killpg(proc.pid, signal.SIGKILL)
+        except (OSError, subprocess.SubprocessError):
+            pass
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
     def compile(self, tex: str) -> CompileResult:
         if not self.available():
             return CompileResult(None, None, "latex_unavailable")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory() as tmp:
+        if self.user:  # POSIX only (Docker): Tectonic must be able to write the cache
+            shutil.chown(self.cache_dir, self.user, self.user)
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             tmp_path = Path(tmp)
             (tmp_path / "main.tex").write_text(tex, encoding="utf-8")
             kwargs: dict = {}
-            if self.user:  # POSIX only (Docker)
+            if self.user:
                 shutil.chown(tmp_path, self.user, self.user)
                 shutil.chown(tmp_path / "main.tex", self.user, self.user)
                 kwargs = {"user": self.user, "group": self.user}
-            env = {
-                **os.environ,
-                "TECTONIC_UNTRUSTED_MODE": "1",
-                "TECTONIC_CACHE_DIR": str(self.cache_dir),
-            }
+            if os.name == "nt":
+                kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+            else:
+                kwargs["start_new_session"] = True
             args = [str(self.executable), "-X", "compile", "--untrusted", "main.tex"]
             with _LOCK:
                 try:
-                    proc = subprocess.run(
+                    proc = subprocess.Popen(
                         args,
                         cwd=tmp,
-                        env=env,
-                        capture_output=True,
-                        timeout=self.timeout,
+                        env=self._env(),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
                         **kwargs,
                     )
+                except OSError as e:
+                    return CompileResult(None, str(e), "latex_unavailable")
+                try:
+                    out, err = proc.communicate(timeout=self.timeout)
                 except subprocess.TimeoutExpired:
+                    self._kill_tree(proc)
+                    try:
+                        proc.communicate(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        pass
                     return CompileResult(None, None, "latex_timeout")
-                log = (proc.stdout + proc.stderr).decode("utf-8", errors="replace")
-                log = log.replace(tmp, "<tmp>").replace(str(self.cache_dir), "<cache>")
+                log = self._mask((out + err).decode("utf-8", errors="replace"), tmp)
                 pdf_path = tmp_path / "main.pdf"
                 if proc.returncode != 0 or not pdf_path.exists():
                     return CompileResult(None, log, "latex_failed")

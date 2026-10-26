@@ -22,6 +22,7 @@ FAKE = textwrap.dedent(
         time.sleep(30)
     if "FAIL" in tex:
         print("error: failed in " + os.getcwd())
+        print("posix: " + os.getcwd().replace(chr(92), "/"))
         print("! Undefined control sequence.")
         sys.exit(1)
     if "NOPDF" in tex:
@@ -47,6 +48,21 @@ def fake_exe(tmp_path):
     return wrapper
 
 
+def make_fake_popen(seen):
+    class FakePopen:
+        returncode = 0
+        pid = 1
+
+        def __init__(self, args, **kw):
+            seen["args"], seen["env"], seen["kw"] = args, kw["env"], kw
+            open(os.path.join(kw["cwd"], "main.pdf"), "wb").write(b"%PDF-x")
+
+        def communicate(self, timeout=None):
+            return b"", b""
+
+    return FakePopen
+
+
 def test_unavailable_without_executable(tmp_path):
     c = TectonicCompiler(None, tmp_path / "cache")
     assert c.available() is False
@@ -66,7 +82,33 @@ def test_fake_failure_masks_paths(fake_exe, tmp_path):
     r = c.compile("FAIL")
     assert r.pdf is None and r.error_code == "latex_failed"
     assert "<tmp>" in r.log
+    assert "posix: <tmp>" in r.log
+    assert str(tmp_path) not in r.log
     assert "Undefined control sequence" in r.log
+
+
+def test_oserror_is_unavailable(tmp_path):
+    exe = tmp_path / "bad.exe"
+    exe.write_text("not an executable")
+    exe.chmod(0o644)
+    r = TectonicCompiler(exe, tmp_path / "cache").compile("x")
+    assert r.error_code == "latex_unavailable" and r.log
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX user/group handling")
+def test_user_branch(tmp_path, monkeypatch):
+    from app.latex import compiler as mod
+
+    chowned, seen = [], {}
+    monkeypatch.setattr(mod.shutil, "chown", lambda p, u, g: chowned.append((str(p), u, g)))
+    monkeypatch.setattr(mod.subprocess, "Popen", make_fake_popen(seen))
+    exe = tmp_path / "t"
+    exe.write_text("")
+    cache = tmp_path / "cache"
+    assert TectonicCompiler(exe, cache, user="ramen-tex").compile("x").pdf == b"%PDF-x"
+    assert (str(cache), "ramen-tex", "ramen-tex") in chowned
+    assert any(p == seen["kw"]["cwd"] for p, _, _ in chowned)
+    assert seen["kw"]["user"] == "ramen-tex" and seen["kw"]["group"] == "ramen-tex"
 
 
 def test_no_pdf_is_failure(fake_exe, tmp_path):
@@ -75,23 +117,21 @@ def test_no_pdf_is_failure(fake_exe, tmp_path):
 
 
 def test_fake_timeout(fake_exe, tmp_path):
+    import time
+
+    t0 = time.monotonic()
     r = TectonicCompiler(fake_exe, tmp_path / "cache", timeout=0.5).compile("SLEEP")
+    assert time.monotonic() - t0 < 8
     assert r.pdf is None and r.error_code == "latex_timeout"
 
 
 def test_args_and_env(tmp_path, monkeypatch):
-    import subprocess
-
     from app.latex import compiler as mod
 
     seen = {}
 
-    def fake_run(args, **kw):
-        seen["args"], seen["env"], seen["kw"] = args, kw["env"], kw
-        open(os.path.join(kw["cwd"], "main.pdf"), "wb").write(b"%PDF-x")
-        return subprocess.CompletedProcess(args, 0, b"", b"")
-
-    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    monkeypatch.setenv("JOBTRACKER_SECRET", "s3cret")
+    monkeypatch.setattr(mod.subprocess, "Popen", make_fake_popen(seen))
     (tmp_path / "tectonic").write_text("")
     c = TectonicCompiler(tmp_path / "tectonic", tmp_path / "cache")
     assert c.compile("x").pdf == b"%PDF-x"
@@ -99,6 +139,8 @@ def test_args_and_env(tmp_path, monkeypatch):
     assert seen["env"]["TECTONIC_UNTRUSTED_MODE"] == "1"
     assert seen["env"]["TECTONIC_CACHE_DIR"] == str(tmp_path / "cache")
     assert "user" not in seen["kw"]
+    assert "JOBTRACKER_SECRET" not in seen["env"]
+    assert "PATH" in seen["env"]
 
 
 def test_error_excerpt_two_blocks():
@@ -145,17 +187,18 @@ def test_default_template_compiles(tmp_path):
 @needs_tectonic
 def test_tectonic_reads_absolute_paths_without_guard(tmp_path):
     # Documents why the guard (Task 3) is necessary: untrusted mode does NOT stop
-    # \input of absolute paths. If this test breaks, Tectonic changed behavior.
+    # absolute-path input. If this test breaks, Tectonic changed behavior.
     secret = tmp_path / "secret.txt"
-    secret.write_text("SECRETMARKER", encoding="utf-8")
-    doc = r"\documentclass{article}\begin{document}\input{" + secret.as_posix() + r"}\end{document}"
+    secret.write_text(r"\def\SECRETOK{}", encoding="utf-8")
+    doc = (
+        r"\documentclass{article}\begin{document}\input{" + secret.as_posix() + "}"
+        + r"\ifdefined\SECRETOK\else\errmessage{not read}\fi Done.\end{document}"
+    )
     r = TectonicCompiler(shutil.which("tectonic"), tmp_path / "cache", timeout=600).compile(doc)
     assert r.error_code is None, r.log
     assert r.pdf.startswith(b"%PDF")
 
 
-@pytest.mark.tectonic
-@needs_tectonic
 def test_guard_blocks_same_document(tmp_path):
     marker = r"\begin{document}"
     line = r"\input{" + (tmp_path / "s.txt").as_posix() + "}"
