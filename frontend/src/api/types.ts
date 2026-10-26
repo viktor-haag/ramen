@@ -386,6 +386,8 @@ export interface VersionInfo {
   /** The check runs automatically (app setting on and not disabled by the server). */
   enabled: boolean;
   disabled_by_env: boolean;
+  /** Tectonic is installed, so PDF cover letters work. Absent on older servers. */
+  pdf_available?: boolean;
 }
 
 export interface UsageTotals {

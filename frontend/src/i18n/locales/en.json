@@ -142,7 +142,11 @@
     "board": "Board",
     "table": "Table",
     "showFinished": "Show finished",
-    "export": { "button": "Export", "csv": "CSV (.csv)", "xlsx": "Excel (.xlsx)" },
+    "export": {
+      "button": "Export",
+      "csv": "CSV (.csv)",
+      "xlsx": "Excel (.xlsx)"
+    },
     "hideSaved": "Hide saved",
     "search": "Search",
     "untitled": "Untitled posting",
@@ -636,6 +640,24 @@
       "rate_limited": "GitHub's request limit was reached; trying again later.",
       "invalid_response": "GitHub sent an unexpected answer.",
       "http": "GitHub answered with an error ({code})."
+    },
+    "pdf": {
+      "available": "PDF cover letters: available",
+      "unavailable": "PDF cover letters: not available (Tectonic missing)"
     }
+  },
+  "coverTemplates": {
+    "title": "Cover letter templates",
+    "hint": "A template is a single .tex file. Letters may only use commands that appear in the template, plus basic formatting, so add any command you need to your template.",
+    "file": "Template file (.tex)",
+    "upload": "Upload",
+    "empty": "No templates yet.",
+    "builtin": "Default",
+    "download": "Download",
+    "rename": "Rename",
+    "renameTitle": "Rename template",
+    "name": "Name",
+    "deleteTitle": "Delete template",
+    "deleteText": "Delete the template \"{name}\"?"
   }
 }

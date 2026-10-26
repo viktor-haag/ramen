@@ -5,6 +5,7 @@ import { useDisplay } from "vuetify";
 import type { PluginOut } from "@/api/types";
 import AboutCard from "@/components/AboutCard.vue";
 import AiSettings from "@/components/AiSettings.vue";
+import CoverLetterTemplatesCard from "@/components/CoverLetterTemplatesCard.vue";
 import DangerZone from "@/components/DangerZone.vue";
 import SchemaForm from "@/components/SchemaForm.vue";
 import { setLocale, type Locale } from "@/i18n";
@@ -138,6 +139,8 @@ async function toggleEnabled(p: PluginOut, value: boolean | null) {
   </v-expansion-panels>
 
   <AiSettings />
+
+  <CoverLetterTemplatesCard />
 
   <AboutCard />
 

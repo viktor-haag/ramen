@@ -142,7 +142,11 @@
     "board": "Board",
     "table": "Tabelle",
     "showFinished": "Beendete anzeigen",
-    "export": { "button": "Exportieren", "csv": "CSV (.csv)", "xlsx": "Excel (.xlsx)" },
+    "export": {
+      "button": "Exportieren",
+      "csv": "CSV (.csv)",
+      "xlsx": "Excel (.xlsx)"
+    },
     "hideSaved": "Gemerkte ausblenden",
     "search": "Suchen",
     "untitled": "Stelle ohne Titel",
@@ -636,6 +640,24 @@
       "rate_limited": "Das Abfragelimit von GitHub ist erreicht; später erneut.",
       "invalid_response": "GitHub hat unerwartet geantwortet.",
       "http": "GitHub hat mit einem Fehler geantwortet ({code})."
+    },
+    "pdf": {
+      "available": "PDF-Anschreiben: verfügbar",
+      "unavailable": "PDF-Anschreiben: nicht verfügbar (Tectonic fehlt)"
     }
+  },
+  "coverTemplates": {
+    "title": "Anschreiben-Templates",
+    "hint": "Ein Template ist eine einzelne .tex-Datei. In Anschreiben sind nur Befehle erlaubt, die im Template vorkommen, plus einfache Formatierung; fehlende Befehle bitte im Template ergänzen.",
+    "file": "Template-Datei (.tex)",
+    "upload": "Hochladen",
+    "empty": "Noch keine Templates.",
+    "builtin": "Standard",
+    "download": "Herunterladen",
+    "rename": "Umbenennen",
+    "renameTitle": "Template umbenennen",
+    "name": "Name",
+    "deleteTitle": "Template löschen",
+    "deleteText": "Das Template „{name}“ löschen?"
   }
 }

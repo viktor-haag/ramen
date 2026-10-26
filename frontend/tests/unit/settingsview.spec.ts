@@ -34,6 +34,7 @@ beforeEach(() => {
   get.mockImplementation(async (path: string) => {
     if (path === "/plugins") return plugins as never;
     if (path === "/prompts") return [] as never;
+    if (path === "/cover-letter-templates") return [] as never;
     if (path === "/llm/configs") return [] as never;
     if (path === "/llm/purposes") return { profile: null, fit: null, extraction: null, cover_letter: null } as never;
     if (path === "/settings") return { fit_auto: false, fit_concurrency: 2, daily_limit_kind: "none", daily_limit_value: null } as never;
@@ -63,6 +64,14 @@ describe("SettingsView", () => {
     expect(w.find('[data-test="about-card"]').exists()).toBe(true);
     expect(html.indexOf('data-test="llm-usage"')).toBeLessThan(html.indexOf('data-test="about-card"'));
     expect(w.get('[data-test="about-installed"]').text()).toContain("0.1.0");
+    w.unmount();
+  });
+
+  it("shows the cover letter templates card before the About card", async () => {
+    const w = await mountView();
+    const html = w.html();
+    expect(w.find('[data-test="cover-templates-card"]').exists()).toBe(true);
+    expect(html.indexOf('data-test="cover-templates-card"')).toBeLessThan(html.indexOf('data-test="about-card"'));
     w.unmount();
   });
 

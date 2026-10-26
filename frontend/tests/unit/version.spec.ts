@@ -217,6 +217,18 @@ describe("AboutCard", () => {
     w.unmount();
   });
 
+  it("shows whether PDF cover letters are available", async () => {
+    let w = await mountCard(info({ pdf_available: true }));
+    expect(w.get('[data-test="about-pdf"]').text()).toContain("PDF cover letters: available");
+    w.unmount();
+    w = await mountCard(info({ pdf_available: false }));
+    expect(w.get('[data-test="about-pdf"]').text()).toContain("not available (Tectonic missing)");
+    w.unmount();
+    w = await mountCard(info());
+    expect(w.find('[data-test="about-pdf"]').exists()).toBe(false);
+    w.unmount();
+  });
+
   it("Check now posts and shows the new result", async () => {
     const w = await mountCard();
     post.mockResolvedValue(info({ latest: "0.5.0" }));

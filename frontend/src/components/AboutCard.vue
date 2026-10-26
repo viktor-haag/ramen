@@ -72,6 +72,9 @@ async function setAuto(value: boolean | null) {
           </tr>
         </tbody>
       </v-table>
+      <div v-if="info?.pdf_available !== undefined" class="text-body-2 mb-2" data-test="about-pdf">
+        {{ info.pdf_available ? t("about.pdf.available") : t("about.pdf.unavailable") }}
+      </div>
       <div class="text-body-2 text-medium-emphasis" data-test="about-last-checked">{{ lastChecked }}</div>
       <v-alert v-if="errorText" type="warning" density="compact" class="mt-3" data-test="about-error">{{ errorText }}</v-alert>
       <v-alert v-if="disabledByEnv" type="info" density="compact" class="mt-3" data-test="about-disabled">{{ t("about.disabledByEnv") }}</v-alert>
