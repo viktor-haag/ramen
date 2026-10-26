@@ -110,9 +110,48 @@ describe("cover letter store", () => {
     expect(get).toHaveBeenCalledTimes(1);
   });
 
+  it("ignores a late response for another application", async () => {
+    let resolveA!: (l: CoverLetterOut) => void;
+    get.mockImplementationOnce(() => new Promise((r) => (resolveA = r as never)));
+    get.mockResolvedValueOnce(letter({ application_id: 8, content: "B" }));
+    const store = useCoverLetterStore();
+    const a = store.load(7);
+    await store.load(8);
+    resolveA(letter({ application_id: 7, content: "A" }));
+    await a;
+    expect(store.letter?.content).toBe("B");
+    expect(store.loading).toBe(false);
+  });
+
+  it("does not restart polling when stopPolling ran during an in-flight fetch", async () => {
+    vi.useFakeTimers();
+    let resolve!: (l: CoverLetterOut) => void;
+    get.mockImplementationOnce(() => new Promise((r) => (resolve = r as never)));
+    const store = useCoverLetterStore();
+    const p = store.load(7);
+    store.stopPolling();
+    resolve(letter({ status: "generating" }));
+    await p;
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(store.letter).toBeNull();
+  });
+
+  it("keeps letter null when remove runs during an in-flight fetch", async () => {
+    let resolve!: (l: CoverLetterOut) => void;
+    get.mockImplementationOnce(() => new Promise((r) => (resolve = r as never)));
+    del.mockResolvedValue(undefined as never);
+    const store = useCoverLetterStore();
+    const p = store.load(7);
+    expect(await store.remove(7)).toBe(true);
+    resolve(letter());
+    await p;
+    expect(store.letter).toBeNull();
+  });
+
   it("pdfUrl carries a cache-busting version", () => {
     expect(pdfUrl(7, "2026-01-01T00:00:00Z")).toBe("/api/applications/7/cover-letter/pdf?v=2026-01-01T00:00:00Z");
-    expect(pdfUrl(7, null)).toContain("v=");
+    expect(pdfUrl(7, null)).toBe("/api/applications/7/cover-letter/pdf?v=0");
   });
 });
 

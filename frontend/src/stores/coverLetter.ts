@@ -1,14 +1,14 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { ApiError, api, BASE, toQuery } from "@/api/client";
-import type { CoverLetterIn, CoverLetterLanguage, CoverLetterOut } from "@/api/types";
+import type { CoverLetterIn, CoverLetterOut } from "@/api/types";
 import { useNotifyStore } from "@/stores/notify";
 
 const POLL_MS = 2000;
 
 /** URL of the compiled PDF; `compiledAt` busts the browser cache after every recompile. */
 export function pdfUrl(appId: number, compiledAt: string | null): string {
-  return `${BASE}/applications/${appId}/cover-letter/pdf?v=${compiledAt ?? ""}`;
+  return `${BASE}/applications/${appId}/cover-letter/pdf?v=${compiledAt ?? 0}`;
 }
 
 /** The cover letter of one application. Polls while it is generating or compiling. */
@@ -16,58 +16,66 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
   const letter = ref<CoverLetterOut | null>(null);
   const loading = ref(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let pollApp: number | null = null;
-  let ticking = false;
+  // Request generation: bumped by stopPolling() and load(); responses from an older generation are dropped.
+  let gen = 0;
 
-  function stopPolling() {
+  function clearTimer() {
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
-    pollApp = null;
+  }
+
+  function stopPolling() {
+    gen++;
+    clearTimer();
+    loading.value = false;
   }
 
   function schedule(appId: number) {
-    stopPolling();
+    clearTimer();
     if (!letter.value || letter.value.status === "idle") return;
-    pollApp = appId;
-    timer = setTimeout(() => void tick(appId), POLL_MS);
+    const g = gen;
+    timer = setTimeout(() => {
+      timer = undefined;
+      if (g === gen) void fetchLetter(appId, g);
+    }, POLL_MS);
   }
 
-  async function tick(appId: number) {
-    timer = undefined;
-    if (ticking || pollApp !== appId) return;
-    ticking = true;
+  async function fetchLetter(appId: number, g: number) {
+    let next: CoverLetterOut | null = null;
     try {
-      await fetchLetter(appId);
-    } finally {
-      ticking = false;
-    }
-    // fetchLetter reschedules on success; keep polling after a transient error too.
-    if (timer === undefined && pollApp === appId && letter.value && letter.value.status !== "idle") schedule(appId);
-  }
-
-  async function fetchLetter(appId: number) {
-    try {
-      letter.value = await api.get<CoverLetterOut>(`/applications/${appId}/cover-letter`);
+      next = await api.get<CoverLetterOut>(`/applications/${appId}/cover-letter`);
     } catch (e) {
+      if (g !== gen) return;
       if (e instanceof ApiError && e.status === 404) letter.value = null;
       else useNotifyStore().error(e);
+      schedule(appId);
+      return;
     }
+    if (g !== gen || next.application_id !== appId) return;
+    letter.value = next;
     schedule(appId);
   }
 
   async function load(appId: number) {
+    gen++;
+    clearTimer();
+    const g = gen;
     loading.value = true;
     try {
-      await fetchLetter(appId);
+      await fetchLetter(appId, g);
     } finally {
-      loading.value = false;
+      if (g === gen) loading.value = false;
     }
   }
 
   async function mutate(appId: number, call: () => Promise<CoverLetterOut>): Promise<boolean> {
+    const g = gen;
     try {
-      letter.value = await call();
-      schedule(appId);
+      const next = await call();
+      if (g === gen && next.application_id === appId) {
+        letter.value = next;
+        schedule(appId);
+      }
       return true;
     } catch (e) {
       useNotifyStore().error(e);
@@ -82,7 +90,7 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
   const send = (appId: number, text: string) => mutate(appId, () => api.post<CoverLetterOut>(`${base(appId)}/messages`, { text }));
   const repair = (appId: number) => mutate(appId, () => api.post<CoverLetterOut>(`${base(appId)}/repair`));
 
-  async function attach(appId: number, lang: CoverLetterLanguage | "de" | "en"): Promise<boolean> {
+  async function attach(appId: number, lang: "de" | "en"): Promise<boolean> {
     try {
       await api.post(`${base(appId)}/attach?${toQuery({ lang })}`);
       return true;
@@ -95,7 +103,7 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
   async function remove(appId: number): Promise<boolean> {
     try {
       await api.del(base(appId));
-      stopPolling();
+      stopPolling(); // also drops responses of requests still in flight
       letter.value = null;
       return true;
     } catch (e) {
