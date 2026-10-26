@@ -3,36 +3,29 @@
 All user/posting/document text is data: it is defused so it cannot open or close a data block.
 No DB session is held during the LLM calls.
 """
-import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.errors import UnprocessableError, UpstreamError
 from app.llm.base import Message
-from app.llm.factory import ConfigData
 from app.llm.runner import llm_call
 from app.models import Application, ProfileDocument, UserProfile
 from app.services import prompts
 from app.services.posting_text import DATA_TAGS, defuse, posting_block
+from app.services.stream_filter import NOTE_MARKER
 
 PURPOSE = "cover_letter"
 DOC_CAP = 20_000
 CONTEXT_CAP = 120_000
 MAX_TOKENS = 8192
 
-SCHEMA = {
-    "type": "object",
-    "properties": {"document": {"type": "string"}, "note": {"type": "string"}},
-    "required": ["document", "note"],
-    "additionalProperties": False,
-}
-
 CORRECTION = (
-    'Your answer was not usable. Answer again with only a JSON object {"document": "<the complete letter>", '
-    '"note": "<1-2 sentences for the user>"}: `document` must not be empty and must not be wrapped in code '
-    "fences; for LaTeX it must be the complete source containing \\documentclass and \\end{document}."
+    f"Your answer was not usable. Answer again with the complete document, then a line containing only "
+    f"`{NOTE_MARKER}`, then 1-2 sentences for the user. The document must not be empty and must not be wrapped "
+    "in code fences; for LaTeX it must be the complete source containing \\documentclass and \\end{document}."
 )
 REPAIR_INSTRUCTION = "The document does not compile; fix only the error, change nothing else."
 
@@ -43,13 +36,13 @@ LANGUAGE_LINES = {
 AUTO_LANGUAGE_LINE = "Write the letter in the language of the posting."
 FORMAT_LINES = {
     "latex": (
-        "`document` is the complete LaTeX source from `\\documentclass` to `\\end{document}`. Keep the preamble "
+        "The document is the complete LaTeX source from `\\documentclass` to `\\end{document}`. Keep the preamble "
         "(everything before `\\begin{document}`) exactly as in the template. In the body use only commands and "
         "environments that appear in the template, plus basic text formatting (`\\textbf`, `\\textit`, `\\emph`, "
         "`\\underline`, `\\\\`, `\\par`, `\\hfill`, `\\vspace`, `\\href`, `\\url`, `itemize`/`enumerate`). "
         "Never define new commands and never read or write files."
     ),
-    "text": "`document` is the complete letter as plain text, no Markdown.",
+    "text": "The document is the complete letter as plain text, no Markdown.",
 }
 
 
@@ -150,38 +143,50 @@ _FENCE = re.compile(r"\A\s*```[A-Za-z]*[ \t]*\n(.*?)\n?```\s*\Z", re.DOTALL)
 
 
 def parse_answer(text: str, fmt: str) -> tuple[str, str] | None:
-    """First JSON object in `text` -> (document, note) if valid for `fmt` ("latex" or "text")."""
+    """Plain-text answer -> (document, note) if valid for `fmt` ("latex" or "text").
+
+    Split at the last line that is (trimmed) `NOTE_MARKER`; without it the whole text is the document and
+    the note is empty. `<think>` blocks and code fences around the document are removed.
+    """
     text = _THINK.sub("", text or "")
-    decoder = json.JSONDecoder()
-    for m in re.finditer(r"\{", text):
-        try:
-            obj, _ = decoder.raw_decode(text, m.start())
-        except ValueError:
-            continue
-        if not isinstance(obj, dict):
-            continue
-        document, note = obj.get("document"), obj.get("note")
-        if not isinstance(document, str) or not isinstance(note, str):
-            return None  # the first object decides
-        fenced = _FENCE.match(document)
-        document = (fenced.group(1) if fenced else document).strip()
-        if not document:
-            return None
-        if fmt == "latex" and not ("\\documentclass" in document and "\\end{document}" in document):
-            return None
-        return document, note.strip()
-    return None
+    lines = text.split("\n")
+    marks = [i for i, line in enumerate(lines) if line.strip() == NOTE_MARKER]
+    if marks:
+        document, note = "\n".join(lines[: marks[-1]]), "\n".join(lines[marks[-1] + 1:])
+    else:
+        document, note = text, ""
+    fenced = _FENCE.match(document)
+    document = (fenced.group(1) if fenced else document).strip()
+    if not document:
+        return None
+    if fmt == "latex" and not ("\\documentclass" in document and "\\end{document}" in document):
+        return None
+    return document, note.strip()
 
 
-def ask(session_factory: sessionmaker[Session], system: str, user_text: str, fmt: str) -> Answer:
+def ask(
+    session_factory: sessionmaker[Session],
+    system: str,
+    user_text: str,
+    fmt: str,
+    *,
+    on_text: Callable[[str], None] | None = None,
+    on_attempt: Callable[[], None] | None = None,
+) -> Answer:
+    """One LLM call plus at most one correction retry. `on_attempt()` runs before each try, `on_text`
+    receives the streamed chunks (passed through to `llm_call`)."""
     messages = [Message("user", [user_text])]
 
-    def first(_cfg: ConfigData) -> tuple[str, list[Message]]:
-        return system, messages
+    def call(conversation: list[Message]):
+        if on_attempt is not None:
+            on_attempt()
+        return llm_call(
+            session_factory, PURPOSE, lambda _cfg: (system, conversation), max_tokens=MAX_TOKENS, on_text=on_text
+        )
 
     result, exceeded = None, False
     try:
-        result, exceeded = llm_call(session_factory, PURPOSE, first, json_schema=SCHEMA, max_tokens=MAX_TOKENS)
+        result, exceeded = call(messages)
     except UpstreamError as exc:  # no usable text: same as an invalid answer
         if exc.code != "llm_invalid_output":
             raise
@@ -190,13 +195,7 @@ def ask(session_factory: sessionmaker[Session], system: str, user_text: str, fmt
         retry = messages if result is None else [
             *messages, Message("assistant", [result.text]), Message("user", [CORRECTION])
         ]
-
-        def second(_cfg: ConfigData) -> tuple[str, list[Message]]:
-            return system, retry
-
-        result, exceeded_retry = llm_call(
-            session_factory, PURPOSE, second, json_schema=SCHEMA, max_tokens=MAX_TOKENS
-        )
+        result, exceeded_retry = call(retry)
         exceeded = exceeded or exceeded_retry
         parsed = parse_answer(result.text, fmt)
         if parsed is None:

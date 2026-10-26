@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 from app.errors import UnprocessableError, UpstreamError
@@ -7,6 +5,7 @@ from app.llm.base import LLMResult
 from app.models import Application, Posting, ProfileDocument, UserProfile
 from app.models.enums import DocumentKind
 from app.services import cover_letter_llm as cl
+from cover_letter_answers import answer_text
 
 LATEX = "\\documentclass{article}\n\\begin{document}\nHi\n\\end{document}"
 
@@ -90,13 +89,18 @@ def test_system_language_and_format(client, app):
 
 
 def test_parse_answer():
-    wrap = lambda d: json.dumps({"document": d, "note": "n"})
-    assert cl.parse_answer(wrap("```latex\n" + LATEX + "\n```"), "latex") == (LATEX, "n")
-    assert cl.parse_answer("<think>{\"a\":1}</think>" + wrap(LATEX), "latex") == (LATEX, "n")
-    assert cl.parse_answer(wrap("\\documentclass{article}\nHi"), "latex") is None
-    assert cl.parse_answer(wrap("Dear Sir"), "text") == ("Dear Sir", "n")
-    assert cl.parse_answer(wrap("  "), "text") is None
-    assert cl.parse_answer("no json", "text") is None
+    assert cl.parse_answer(answer_text(LATEX, "n"), "latex") == (LATEX, "n")
+    assert cl.parse_answer("Dear Sir", "text") == ("Dear Sir", "")
+    two = "A\n<<<RAMEN-NOTE>>>\nB\n<<<RAMEN-NOTE>>>\n note \n"
+    assert cl.parse_answer(two, "text") == ("A\n<<<RAMEN-NOTE>>>\nB", "note")
+    assert cl.parse_answer("Dear\n  <<<RAMEN-NOTE>>>  \nn", "text") == ("Dear", "n")
+    assert cl.parse_answer("a <<<RAMEN-NOTE>>> b", "text") == ("a <<<RAMEN-NOTE>>> b", "")
+    assert cl.parse_answer(answer_text("```latex\n" + LATEX + "\n```", "n"), "latex") == (LATEX, "n")
+    think = "<think>x\n<<<RAMEN-NOTE>>>\ny</think>" + answer_text(LATEX, "n")
+    assert cl.parse_answer(think, "latex") == (LATEX, "n")
+    assert cl.parse_answer(answer_text("\\documentclass{article}\nHi", "n"), "latex") is None
+    assert cl.parse_answer(answer_text("  ", "n"), "text") is None
+    assert cl.parse_answer("", "text") is None
 
 
 def test_texts():
@@ -120,9 +124,9 @@ class Fake:
 def fake(monkeypatch):
     Fake.calls, Fake.replies = [], []
 
-    def llm_call(sf, purpose, build, *, json_schema=None, max_tokens=4096):
+    def llm_call(sf, purpose, build, *, json_schema=None, max_tokens=4096, on_text=None):
         system, messages = build(None)
-        Fake.calls.append((purpose, messages, json_schema, max_tokens))
+        Fake.calls.append((purpose, messages, json_schema, max_tokens, on_text))
         text, exceeded = Fake.replies.pop(0)
         return LLMResult(text, 1, 1, False), exceeded
 
@@ -130,26 +134,36 @@ def fake(monkeypatch):
 
 
 def good(d="Dear"):
-    return json.dumps({"document": d, "note": "ok"})
+    return answer_text(d, "ok")
 
 
 def test_ask_ok(fake):
     Fake.replies = [(good(), True)]
     a = cl.ask(None, "sys", "user", "text")
     assert a == cl.Answer("Dear", "ok", True)
-    assert Fake.calls[0][0] == "cover_letter" and Fake.calls[0][2] is cl.SCHEMA and Fake.calls[0][3] == 8192
+    assert Fake.calls[0][0] == "cover_letter" and Fake.calls[0][2] is None and Fake.calls[0][3] == 8192
+    assert not hasattr(cl, "SCHEMA")
+
+
+def test_ask_passes_on_text_and_calls_on_attempt_per_try(fake):
+    seen, attempts = [], []
+    Fake.replies = [("garbage", False), (good(LATEX), False)]
+    a = cl.ask(None, "sys", "user", "latex", on_text=seen.append, on_attempt=lambda: attempts.append(1))
+    assert a.document == LATEX and len(attempts) == 2
+    assert all(c[4] == seen.append and c[2] is None for c in Fake.calls)
 
 
 def test_ask_retry_ors_limit(fake):
-    Fake.replies = [("garbage", True), (good(), False)]
-    a = cl.ask(None, "sys", "user", "text")
-    assert a.limit_exceeded and a.document == "Dear"
+    Fake.replies = [("garbage", True), (good(LATEX), False)]
+    a = cl.ask(None, "sys", "user", "latex")
+    assert a.limit_exceeded and a.document == LATEX
     msgs = Fake.calls[1][1]
     assert msgs[-1].parts == [cl.CORRECTION] and msgs[-2].role == "assistant"
+    assert "<<<RAMEN-NOTE>>>" in cl.CORRECTION and "JSON" not in cl.CORRECTION
 
 
 def test_ask_fails_twice(fake):
-    Fake.replies = [("a", False), ("b", False)]
+    Fake.replies = [("a", False), ("  ", False)]
     with pytest.raises(UpstreamError) as e:
-        cl.ask(None, "sys", "user", "text")
+        cl.ask(None, "sys", "user", "latex")
     assert e.value.code == "llm_invalid_output" and e.value.params == {"reason": "invalid answer"}
