@@ -1,83 +1,161 @@
-"""Forbidden-command guard run before every LaTeX compile (spec 6.2).
+"""Allowlist guard run before every LaTeX compile (spec 6.2).
 
 Tectonic can read arbitrary paths, so documents (LLM-written or hand-edited)
-are scanned for file access, obfuscation and risky packages first.
+are checked first. The raw text is scanned (comments are NOT stripped, TeX does
+not treat `%` as a comment inside \\verb/\\url). Anything not known-safe or
+present in the trusted template is a violation.
 """
 
 import re
 from dataclasses import dataclass
 
-FORBIDDEN_COMMANDS = (
-    "input", "include", "InputIfFileExists", "IfFileExists", "openin", "read",
-    "readline", "openout", "write", "immediate", "includegraphics",
-    "lstinputlisting", "verbatiminput", "inputminted", "pdffiledump",
-    "filesize", "pdffilesize", "catcode", "csname", "scantokens",
-)
-FORBIDDEN_PACKAGES = frozenset({
-    "verbatim", "listings", "minted", "shellesc", "catchfile", "bashful",
-    "pythontex", "fancyvrb", "moreverb", "filecontents", "attachfile",
-    "embedfile", "pdfpages",
-})
+# Harmless text-formatting control words.
+SAFE_COMMANDS = frozenset("""
+begin end par newline linebreak pagebreak newpage clearpage noindent indent hfill vfill hspace vspace smallskip
+medskip bigskip quad qquad enspace thinspace nobreakspace textbf textit textsl textsc textup texttt textrm textsf
+textnormal emph underline bfseries itshape slshape scshape mdseries upshape normalfont rmfamily sffamily ttfamily
+tiny scriptsize footnotesize small normalsize large Large LARGE huge Huge centering raggedright raggedleft item
+today ldots dots textendash textemdash textbullet textquoteleft textquoteright textquotedblleft textquotedblright
+guillemotleft guillemotright quotedblbase quotesinglbase euro ss ae AE oe OE aa AA o O l L i j copyright
+textregistered texttrademark S P href url color textcolor LaTeX TeX
+""".split())
 
-_COMMAND_RE = re.compile(
-    r"\\(" + "|".join(sorted(FORBIDDEN_COMMANDS, key=len, reverse=True)) + r")(?![A-Za-z@])"
+SAFE_ENVIRONMENTS = frozenset(
+    {"itemize", "enumerate", "description", "center", "flushleft", "flushright", "minipage", "quote"}
 )
-_PACKAGE_RE = re.compile(
-    r"\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}"
-)
-_FILECONTENTS_RE = re.compile(r"\\begin\s*\{filecontents\*?\}")
+
+# Blocked by name even when the template uses them (except on identical template lines).
+ALWAYS_FORBIDDEN = frozenset("""
+input include InputIfFileExists IfFileExists openin read readline openout write immediate includegraphics
+lstinputlisting verbatiminput inputminted pdffiledump filesize pdffilesize catcode csname scantokens makeatletter
+ExplSyntaxOn UseName lastnamedcs begincsname special XeTeXpicfile XeTeXpdffile pdfximage bibliography verb
+""".split())
+
+# Preamble statements: must match a statement of the template (whitespace-insensitive).
+# Value = number of mandatory {...} groups (an optional [...] may precede them).
+PREAMBLE_COMMANDS = {
+    "documentclass": 1,
+    "usepackage": 1,
+    "RequirePackage": 1,
+    "RequirePackageWithOptions": 1,
+    "LoadClass": 1,
+    "LoadClassWithOptions": 1,
+    "PassOptionsToPackage": 2,
+    "PassOptionsToClass": 2,
+}
+
+FILECONTENTS = {"filecontents", "filecontents*"}
+
+_BEGIN_RE = re.compile(r"\\begin\s*\{([^}]*)\}")
 
 
 @dataclass(frozen=True)
 class Violation:
     command: str
-    line: int  # 1-based, line in the original document
+    line: int  # 1-based
 
 
-def strip_comments(tex: str) -> str:
-    r"""Remove `%` to end of line (not `\%`); the number of lines is kept."""
+def _control_words(text: str) -> list[tuple[int, str]]:
+    """Control words with position; `\\` + non-letter is a control symbol (skipped as a pair)."""
     out = []
-    for line in tex.split("\n"):
-        i = 0
-        while i < len(line):
-            c = line[i]
-            if c == "\\":
-                i += 2  # skip the escaped character (`\%`, `\\`)
-                continue
-            if c == "%":
-                line = line[:i]
-                break
+    i, n = 0, len(text)
+    while i < n:
+        if text[i] != "\\":
             i += 1
-        out.append(line)
-    return "\n".join(out)
+            continue
+        j = i + 1
+        while j < n and (text[j].isascii() and text[j].isalpha() or text[j] == "@"):
+            j += 1
+        if j > i + 1:
+            out.append((i, text[i + 1 : j]))
+            i = j
+        else:
+            i += 2
+    return out
 
 
-def _find_all(text: str) -> list[tuple[int, str]]:
-    hits: list[tuple[int, str]] = []
-    for m in _COMMAND_RE.finditer(text):
-        hits.append((m.start(), "\\" + m.group(1)))
-    for m in re.finditer(r"\^\^", text):
-        hits.append((m.start(), "^^"))
-    for m in _PACKAGE_RE.finditer(text):
-        for name in m.group(1).split(","):
-            if name.strip().lower() in FORBIDDEN_PACKAGES:
-                hits.append((m.start(), name.strip().lower()))
-    for m in _FILECONTENTS_RE.finditer(text):
-        hits.append((m.start(), "filecontents"))
-    hits.sort(key=lambda h: h[0])
-    return hits
+def _skip_ws(text: str, i: int) -> int:
+    while i < len(text) and text[i].isspace():
+        i += 1
+    return i
+
+
+def _group_end(text: str, i: int, opener: str) -> int:
+    """Index after the balanced group starting at text[i] (EOF if unbalanced).
+
+    `{...}` balances braces; `[...]` ends at the first `]` outside braces.
+    """
+    depth = 0
+    n = len(text)
+    j = i
+    while j < n:
+        c = text[j]
+        if c == "\\":
+            j += 2
+            continue
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if opener == "{" and depth == 0:
+                return j + 1
+        elif c == "]" and opener == "[" and depth == 0:
+            return j + 1
+        j += 1
+    return n
+
+
+def _statements(text: str) -> list[tuple[int, str, str]]:
+    """(position, command, whitespace-free statement text) for each preamble statement."""
+    out = []
+    for pos, name in _control_words(text):
+        groups = PREAMBLE_COMMANDS.get(name)
+        if groups is None:
+            continue
+        j = _skip_ws(text, pos + 1 + len(name))
+        if j < len(text) and text[j] == "[":
+            j = _group_end(text, j, "[")
+        for _ in range(groups):
+            j = _skip_ws(text, j)
+            if j < len(text) and text[j] == "{":
+                j = _group_end(text, j, "{")
+        out.append((pos, name, re.sub(r"\s+", "", text[pos:j])))
+    return out
 
 
 def check(tex: str, template: str | None) -> Violation | None:
-    """Return the first violation, or None if the document is clean."""
-    text = strip_comments(tex)
-    lines = text.split("\n")
-    allowed: set[str] = set()
-    if template is not None:
-        allowed = {ln.strip() for ln in strip_comments(template).split("\n")}
-    for pos, command in _find_all(text):
-        line_no = text.count("\n", 0, pos) + 1
-        if lines[line_no - 1].strip() in allowed:
-            continue
-        return Violation(command, line_no)
-    return None
+    """Return the earliest violation, or None if the document is allowed."""
+    template = template or ""
+    template_lines = {ln.strip() for ln in template.split("\n") if ln.strip()}
+    allowed_words = SAFE_COMMANDS | {name for _, name in _control_words(template)}
+    allowed_envs = SAFE_ENVIRONMENTS | {m.group(1) for m in _BEGIN_RE.finditer(template)}
+    template_statements = {s for _, _, s in _statements(template)}
+
+    hits: list[tuple[int, str]] = []
+
+    for pos, name, stmt in _statements(tex):
+        if stmt not in template_statements:
+            hits.append((pos, "\\" + name))
+
+    offset = 0
+    for line in tex.split("\n"):
+        if line.strip() not in template_lines:
+            if "^^" in line:
+                hits.append((offset + line.index("^^"), "^^"))
+            for rel, name in _control_words(line):
+                if name in PREAMBLE_COMMANDS:
+                    continue  # handled as statement above
+                if name in ALWAYS_FORBIDDEN or name not in allowed_words:
+                    hits.append((offset + rel, "\\" + name))
+            for m in _BEGIN_RE.finditer(line):
+                env = m.group(1)
+                if env.strip() in FILECONTENTS:
+                    hits.append((offset + m.start(), "filecontents"))
+                elif env not in allowed_envs:
+                    hits.append((offset + m.start(), "\\begin{" + env + "}"))
+        offset += len(line) + 1
+
+    if not hits:
+        return None
+    pos, command = min(hits, key=lambda h: h[0])
+    return Violation(command, tex.count("\n", 0, pos) + 1)
