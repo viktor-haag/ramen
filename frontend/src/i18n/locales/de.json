@@ -360,6 +360,7 @@
     "document_not_found": "Dokument nicht gefunden.",
     "document_unreadable": "Dieses Dokument konnte nicht gelesen werden (beschädigt oder passwortgeschützt).",
     "document_too_large": "Das Dokument ist zu groß (maximal {max_mb} MB).",
+    "cover_letter_context_too_large": "Der gewählte Kontext ist zu lang ({chars} von höchstens {max} Zeichen). Wähle weniger Unterlagen aus.",
     "unsupported_document_type": "Dieser Dateityp wird nicht unterstützt. Nutze PDF, PNG, JPG, WEBP, TXT oder MD.",
     "llm_no_image_support": "Das Extraktionsmodell unterstützt keine Bilder. Wähle in den Einstellungen eine bildfähige Konfiguration.",
     "document_extraction_not_needed": "Dieses Dokument hat bereits Text; die LLM-Extraktion ist nur für Bilder und eingescannte PDFs gedacht.",
