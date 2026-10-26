@@ -106,7 +106,7 @@ Optional environment variables (the defaults work out of the box):
 | `JOBTRACKER_UPDATE_CHECK` | `true` | `false` switches off every update check, including **Check now** (see [Updates](#updates)) |
 | `JOBTRACKER_UPDATE_REPO` | `viktor-haag/ramen` | GitHub repository whose releases are checked for updates |
 | `JOBTRACKER_TECTONIC` | `tectonic` from `PATH` | Path to the Tectonic executable used for PDF cover letters (see [PDF (Tectonic)](#pdf-tectonic)) |
-| `JOBTRACKER_TECTONIC_USER` | – | System user that runs Tectonic in a separate process; set automatically in the Docker image |
+| `JOBTRACKER_TECTONIC_USER` | â€“ | System user that runs Tectonic in a separate process; set automatically in the Docker image |
 
 With Docker, set variables in `docker-compose.yml` under the service, e.g.:
 

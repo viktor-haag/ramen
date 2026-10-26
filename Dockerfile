@@ -8,6 +8,7 @@ RUN npm run build
 
 # Stage 2: download Tectonic (LaTeX engine for PDF cover letters); curl stays out of the final image
 FROM debian:bookworm-slim AS tectonic
+# Set by BuildKit/buildx; the legacy builder leaves it empty, so the step below fails with "unsupported architecture".
 ARG TARGETARCH
 ARG TECTONIC_VERSION=0.17.0
 RUN apt-get update \
