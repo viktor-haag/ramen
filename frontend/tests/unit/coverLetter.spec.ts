@@ -172,7 +172,9 @@ class FakeEventSource {
   emit(type: string, data: unknown) {
     for (const cb of this.handlers[type] ?? []) cb({ data: JSON.stringify(data) } as MessageEvent);
   }
-  fail() {
+  readyState = 1;
+  fail(final = false) {
+    if (final) this.readyState = 2;
     this.onerror?.();
   }
 }
@@ -261,6 +263,52 @@ describe("cover letter streaming", () => {
     store.stopPolling();
     expect(es.closed).toBe(true);
     expect(store.streamText).toBeNull();
+  });
+
+  it("streams for application B after A gave up", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValueOnce(letter({ status: "generating" })).mockResolvedValue(letter({ application_id: 8, status: "generating" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    FakeEventSource.instances[0].fail();
+    await store.load(8);
+    expect(FakeEventSource.instances).toHaveLength(2);
+    expect(FakeEventSource.instances[1].url).toBe("/api/applications/8/cover-letter/stream");
+    store.stopPolling();
+  });
+
+  it("still receives text after a second load of the same application", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValue(letter({ status: "generating" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    await store.load(7);
+    FakeEventSource.instances[0].emit("text", { phase: "generate", text: "x", seq: 1 });
+    expect(store.streamText).toBe("x");
+    store.stopPolling();
+  });
+
+  it("closes the stream on 404", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValueOnce(letter({ status: "generating" })).mockRejectedValue(new ApiError(404, "cover_letter_not_found", {}, "x"));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(FakeEventSource.instances[0].closed).toBe(true);
+    store.stopPolling();
+  });
+
+  it("closes when the browser gave up the connection", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValue(letter({ status: "generating" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    es.emit("text", { phase: "generate", text: "a", seq: 1 });
+    es.fail(true);
+    expect(es.closed).toBe(true);
+    expect(store.streamText).toBeNull();
+    store.stopPolling();
   });
 
   it("ignores late events of application A after load(B)", async () => {

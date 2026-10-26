@@ -23,7 +23,7 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
   const streamPhase = ref<StreamPhase | null>(null);
   let source: EventSource | undefined;
   let sourceApp: number | undefined;
-  let streamGaveUp = false; // stream failed: do not reopen until the job is over or another application loads
+  let gaveUpApp: number | undefined; // stream failed: do not reopen until the job is over or another application loads
 
   function closeStream() {
     source?.close();
@@ -33,17 +33,17 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
     streamPhase.value = null;
   }
 
-  function openStream(appId: number, g: number) {
+  function openStream(appId: number) {
     if (source && sourceApp === appId) return;
-    if (streamGaveUp || typeof EventSource === "undefined") return;
+    if (gaveUpApp === appId || typeof EventSource === "undefined") return;
     closeStream();
     const es = new EventSource(`${BASE}/applications/${appId}/cover-letter/stream`);
     source = es;
     sourceApp = appId;
     let gotText = false;
     let errors = 0;
-    // Events of a replaced or closed source (or an older generation) are dropped.
-    const live = () => source === es && g <= gen;
+    // Events of a replaced or closed source are dropped.
+    const live = () => source === es;
     es.addEventListener("text", (e) => {
       if (!live()) return;
       try {
@@ -63,19 +63,19 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
     es.onerror = () => {
       if (!live()) return;
       errors++;
-      if (!gotText || errors > 1) {
-        streamGaveUp = true;
+      if (!gotText || errors > 1 || es.readyState === 2 /* CLOSED */) {
+        gaveUpApp = appId;
         closeStream();
       }
     };
   }
 
   /** Accept a fresh letter and keep the stream in line with its status. */
-  function accept(next: CoverLetterOut, g: number) {
+  function accept(next: CoverLetterOut) {
     letter.value = next;
-    if (next.status === "generating") openStream(next.application_id, g);
+    if (next.status === "generating") openStream(next.application_id);
     else {
-      streamGaveUp = false;
+      gaveUpApp = undefined;
       closeStream();
     }
   }
@@ -89,7 +89,7 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
     gen++;
     clearTimer();
     closeStream();
-    streamGaveUp = false;
+    gaveUpApp = undefined;
     loading.value = false;
   }
 
@@ -109,23 +109,24 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
       next = await api.get<CoverLetterOut>(`/applications/${appId}/cover-letter`);
     } catch (e) {
       if (g !== gen) return;
-      if (e instanceof ApiError && e.status === 404) letter.value = null;
+      if (e instanceof ApiError && e.status === 404) {
+        letter.value = null;
+        closeStream();
+      }
       else useNotifyStore().error(e);
       schedule(appId);
       return;
     }
     if (g !== gen || next.application_id !== appId) return;
-    accept(next, g);
+    accept(next);
     schedule(appId);
   }
 
   async function load(appId: number) {
     gen++;
     clearTimer();
-    if (sourceApp !== undefined && sourceApp !== appId) {
-      closeStream();
-      streamGaveUp = false;
-    }
+    if (sourceApp !== undefined && sourceApp !== appId) closeStream();
+    if (gaveUpApp !== undefined && gaveUpApp !== appId) gaveUpApp = undefined;
     const g = gen;
     loading.value = true;
     try {
@@ -140,7 +141,7 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
     try {
       const next = await call();
       if (g === gen && next.application_id === appId) {
-        accept(next, g);
+        accept(next);
         schedule(appId);
       }
       return true;
