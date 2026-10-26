@@ -688,6 +688,33 @@
       "regenerate": "Regenerate",
       "replaceTitle": "Replace the cover letter?",
       "replaceText": "The draft and chat history will be replaced."
+    },
+    "view": {
+      "back": "Back to the application",
+      "pdf": "PDF",
+      "tex": "TeX",
+      "openPdf": "Open PDF",
+      "noPdf": "No PDF yet. It is created as soon as the letter has been compiled.",
+      "saveCompile": "Save and compile",
+      "attach": "Save as attachment",
+      "attached": "The cover letter was saved as an attachment.",
+      "downloadTex": "Download .tex",
+      "downloadTxt": "Download .txt",
+      "repair": "Let the AI fix it",
+      "noCompiler": "PDF not available – install Tectonic. The TeX editor and the download still work.",
+      "noCompilerLink": "How to install",
+      "deleteTitle": "Delete the cover letter?",
+      "deleteText": "The draft, the PDF and the chat history will be deleted. Attachments already saved are kept.",
+      "leaveTitle": "Discard your changes?",
+      "leaveText": "Your changes to the cover letter have not been saved.",
+      "leaveOk": "Discard"
+    },
+    "chat": {
+      "title": "Chat",
+      "empty": "Describe what should be changed, e.g. \"shorter\" or \"mention my project X\".",
+      "placeholder": "What should be changed?",
+      "send": "Send",
+      "saveFirst": "Save your changes first."
     }
   }
 }

@@ -688,6 +688,33 @@
       "regenerate": "Neu erstellen",
       "replaceTitle": "Anschreiben ersetzen?",
       "replaceText": "Entwurf und Chatverlauf werden ersetzt."
+    },
+    "view": {
+      "back": "Zurück zur Bewerbung",
+      "pdf": "PDF",
+      "tex": "TeX",
+      "openPdf": "PDF öffnen",
+      "noPdf": "Noch kein PDF. Es entsteht, sobald das Anschreiben kompiliert ist.",
+      "saveCompile": "Speichern und kompilieren",
+      "attach": "Als Anhang speichern",
+      "attached": "Das Anschreiben wurde als Anhang gespeichert.",
+      "downloadTex": ".tex herunterladen",
+      "downloadTxt": ".txt herunterladen",
+      "repair": "Vom LLM beheben lassen",
+      "noCompiler": "PDF nicht verfügbar – Tectonic installieren. TeX-Editor und Download funktionieren weiterhin.",
+      "noCompilerLink": "Zur Anleitung",
+      "deleteTitle": "Anschreiben löschen?",
+      "deleteText": "Entwurf, PDF und Chatverlauf werden gelöscht. Bereits gespeicherte Anhänge bleiben erhalten.",
+      "leaveTitle": "Änderungen verwerfen?",
+      "leaveText": "Deine Änderungen am Anschreiben sind nicht gespeichert.",
+      "leaveOk": "Verwerfen"
+    },
+    "chat": {
+      "title": "Chat",
+      "empty": "Beschreibe, was geändert werden soll, z. B. „kürzer“ oder „erwähne mein Projekt X“.",
+      "placeholder": "Was soll geändert werden?",
+      "send": "Senden",
+      "saveFirst": "Speichere zuerst deine Änderungen."
     }
   }
 }

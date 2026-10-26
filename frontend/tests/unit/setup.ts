@@ -14,3 +14,8 @@ if (!("visualViewport" in globalThis)) {
 }
 // Same for elementsFromPoint (used by the overlay's click-outside handling).
 document.elementsFromPoint ??= () => [];
+
+// CodeMirror measures text through Range rects, which jsdom does not implement.
+const emptyRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
+Range.prototype.getClientRects ??= emptyRects;
+Range.prototype.getBoundingClientRect ??= () => new DOMRect();

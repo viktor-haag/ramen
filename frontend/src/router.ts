@@ -12,6 +12,7 @@ export const router = createRouter({
       component: () => import("./views/ApplicationDetailView.vue"),
       props: true,
     },
+    { path: "/applications/:id/cover-letter", name: "cover-letter", component: () => import("./views/CoverLetterView.vue"), props: true },
     { path: "/profiles", name: "profiles", component: () => import("./views/ProfilesView.vue") },
     { path: "/me", name: "me", component: () => import("./views/MeView.vue") },
     { path: "/settings", name: "settings", component: () => import("./views/SettingsView.vue") },
