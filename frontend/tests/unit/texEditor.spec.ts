@@ -1,6 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import TexEditor from "@/components/TexEditor.vue";
 
 const DOC = "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}";
@@ -88,5 +88,58 @@ describe("TexEditor", () => {
     // the caret colour of the light theme (ramenLight primary) is registered for the editor
     expect(css).toMatch(/caret-color: ?#c45220/);
     w.unmount();
+  });
+
+  describe("followEnd", () => {
+    /** Calls of EditorView.scrollIntoView that target the document end. */
+    function endScrolls(spy: { mock: { calls: readonly (readonly unknown[])[] } }, view: EditorView) {
+      return spy.mock.calls.filter((c) => c[0] === view.state.doc.length).length;
+    }
+    function setScroll(el: HTMLElement, m: { top: number; height: number; client: number }) {
+      Object.defineProperty(el, "scrollHeight", { configurable: true, value: m.height });
+      Object.defineProperty(el, "clientHeight", { configurable: true, value: m.client });
+      el.scrollTop = m.top;
+      Object.defineProperty(el, "scrollTop", { configurable: true, writable: true, value: m.top });
+      el.dispatchEvent(new Event("scroll"));
+    }
+
+    it("scrolls to the end when the content grows", async () => {
+      const spy = vi.spyOn(EditorView, "scrollIntoView");
+      const w = mountEditor({ modelValue: "a", disabled: true, followEnd: true });
+      const view = viewOf(w);
+      spy.mockClear();
+      await w.setProps({ modelValue: "a\nb" });
+      expect(endScrolls(spy, view)).toBe(1);
+      spy.mockClear();
+      await w.setProps({ modelValue: "a\nb\nc" });
+      expect(endScrolls(spy, view)).toBe(1);
+      spy.mockRestore();
+      w.unmount();
+    });
+
+    it("does not scroll without followEnd", async () => {
+      const spy = vi.spyOn(EditorView, "scrollIntoView");
+      const w = mountEditor({ modelValue: "a" });
+      const view = viewOf(w);
+      await w.setProps({ modelValue: "a\nb" });
+      expect(endScrolls(spy, view)).toBe(0);
+      spy.mockRestore();
+      w.unmount();
+    });
+
+    it("stops following after the user scrolls up and resumes at the bottom", async () => {
+      const spy = vi.spyOn(EditorView, "scrollIntoView");
+      const w = mountEditor({ modelValue: "a", disabled: true, followEnd: true });
+      const view = viewOf(w);
+      spy.mockClear();
+      setScroll(view.scrollDOM, { top: 100, height: 1000, client: 200 }); // user scrolled up
+      await w.setProps({ modelValue: "a\nb" });
+      expect(endScrolls(spy, view)).toBe(0);
+      setScroll(view.scrollDOM, { top: 800, height: 1000, client: 200 }); // back at the bottom
+      await w.setProps({ modelValue: "a\nb\nc" });
+      expect(endScrolls(spy, view)).toBe(1);
+      spy.mockRestore();
+      w.unmount();
+    });
   });
 });

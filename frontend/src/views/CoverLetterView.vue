@@ -30,6 +30,8 @@ const appId = computed(() => Number(props.id));
 const letter = computed<CoverLetterOut | null>(() => (store.letter?.application_id === appId.value ? store.letter : null));
 const busy = computed(() => letter.value !== null && letter.value.status !== "idle");
 const latex = computed(() => letter.value?.format === "latex");
+/** Live text of the running job; shown read-only in the editor and never routed through the draft. */
+const streaming = computed(() => letter.value !== null && store.streamText !== null);
 const dark = computed(() => theme.global.current.value.dark);
 const uiLang = computed<"de" | "en">(() => (locale.value === "de" ? "de" : "en"));
 
@@ -90,7 +92,7 @@ type Mode = "pdf" | "tex";
 /** The user's choice; until then the PDF is shown whenever there is one. */
 const userMode = ref<Mode | null>(null);
 const mode = computed<Mode>(() => {
-  if (!latex.value || error.value?.code === "latex_forbidden") return "tex";
+  if (!latex.value || streaming.value || error.value?.code === "latex_forbidden") return "tex";
   return userMode.value ?? (letter.value?.pdf_available ? "pdf" : "tex");
 });
 // Editing fixes the current view: a PDF that appears after saving must not pull the user out of the editor.
@@ -99,6 +101,9 @@ watch(dirty, (d) => d && userMode.value === null && (userMode.value = mode.value
 const editorUsed = ref(false);
 watch(mode, (m) => m === "tex" && (editorUsed.value = true), { immediate: true });
 const pdfSrc = computed(() => (letter.value ? pdfUrl(appId.value, letter.value.compiled_at) : ""));
+function onEditorInput(v: string) {
+  if (!streaming.value) draft.value = v;
+}
 const sourceUrl = computed(() => `${BASE}/applications/${appId.value}/cover-letter/source?${toQuery({ lang: uiLang.value })}`);
 
 // --- actions ---
@@ -200,7 +205,7 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
           data-test="cl-view-toggle"
           @update:model-value="(m: Mode) => (userMode = m)"
         >
-          <v-btn value="pdf" prepend-icon="mdi-file-pdf-box" :disabled="forbiddenLine !== null" data-test="cl-view-pdf">{{ t("coverLetter.view.pdf") }}</v-btn>
+          <v-btn value="pdf" prepend-icon="mdi-file-pdf-box" :disabled="forbiddenLine !== null || streaming" data-test="cl-view-pdf">{{ t("coverLetter.view.pdf") }}</v-btn>
           <v-btn value="tex" prepend-icon="mdi-code-braces" data-test="cl-view-tex">{{ t("coverLetter.view.tex") }}</v-btn>
         </v-btn-toggle>
         <v-spacer />
@@ -241,7 +246,10 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
 
       <div v-if="busy" class="mb-2" data-test="cl-busy">
         <v-progress-linear indeterminate color="primary" data-test="cl-progress" />
-        <div class="text-body-2 text-medium-emphasis mt-1">{{ t(`coverLetter.status.${letter.status}`) }}</div>
+        <div v-if="streaming && store.streamPhase" class="text-body-2 text-medium-emphasis mt-1" data-test="cl-stream-status">
+          {{ t(`coverLetter.stream.${store.streamPhase}`) }}
+        </div>
+        <div v-else class="text-body-2 text-medium-emphasis mt-1">{{ t(`coverLetter.status.${letter.status}`) }}</div>
       </div>
 
       <v-alert v-if="noCompiler" type="info" variant="tonal" density="compact" class="mb-2" data-test="cl-no-compiler">
@@ -281,7 +289,15 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
             <div v-else class="text-body-2 text-medium-emphasis" data-test="cl-no-pdf">{{ t("coverLetter.view.noPdf") }}</div>
           </template>
           <div v-if="editorUsed" v-show="mode === 'tex'" class="cl-pane" data-test="cl-editor">
-            <TexEditor v-model="draft" :language="letter.format" :disabled="busy" :highlight-line="forbiddenLine" :dark="dark" />
+            <TexEditor
+              :model-value="streaming ? store.streamText! : draft"
+              :language="letter.format"
+              :disabled="busy || streaming"
+              :highlight-line="forbiddenLine"
+              :dark="dark"
+              :follow-end="streaming"
+              @update:model-value="onEditorInput"
+            />
           </div>
         </v-col>
         <v-col cols="12" md="4">

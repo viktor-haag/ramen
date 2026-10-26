@@ -668,6 +668,11 @@
       "generating": "Das Anschreiben wird geschrieben …",
       "compiling": "Das PDF wird erzeugt …"
     },
+    "stream": {
+      "generate": "Schreibt Anschreiben…",
+      "revise": "Überarbeitet…",
+      "repair": "Behebt Kompilierfehler…"
+    },
     "language": {
       "posting": "Sprache der Anzeige",
       "de": "Deutsch",

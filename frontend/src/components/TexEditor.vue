@@ -7,7 +7,15 @@ import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 
-const props = defineProps<{ modelValue: string; language: "latex" | "text"; disabled?: boolean; highlightLine?: number | null; dark: boolean }>();
+const props = defineProps<{
+  modelValue: string;
+  language: "latex" | "text";
+  disabled?: boolean;
+  highlightLine?: number | null;
+  dark: boolean;
+  /** Keep the end of the document in view while the content grows (live text), unless the user scrolled up. */
+  followEnd?: boolean;
+}>();
 const emit = defineEmits<{ "update:modelValue": [string] }>();
 
 const host = ref<HTMLElement | null>(null);
@@ -130,9 +138,12 @@ onMounted(() => {
     }),
   });
   markLine(props.highlightLine ?? null);
+  view.scrollDOM.addEventListener("scroll", onScroll, { passive: true });
+  scrollToEnd();
 });
 
 onBeforeUnmount(() => {
+  view?.scrollDOM.removeEventListener("scroll", onScroll);
   view?.destroy();
   view = null;
 });
@@ -146,6 +157,22 @@ function markLine(line: number | null) {
   view.dispatch({ effects });
 }
 
+// --- follow the end: paused while the user has scrolled away from the bottom, resumed once back there ---
+/** Slack for the content padding below the last line. */
+const BOTTOM_SLACK = 24;
+let userScrolledUp = false;
+
+function onScroll() {
+  if (!view) return;
+  const el = view.scrollDOM;
+  userScrolledUp = el.scrollHeight - el.scrollTop - el.clientHeight > BOTTOM_SLACK;
+}
+
+function scrollToEnd() {
+  if (!view || !props.followEnd || userScrolledUp) return;
+  view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.length, { y: "end" }) });
+}
+
 // Only an outside change replaces the document; the echo of our own update is equal and skipped.
 watch(
   () => props.modelValue,
@@ -153,6 +180,15 @@ watch(
     if (!view || v === view.state.doc.toString()) return;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: v } });
     markLine(props.highlightLine ?? null);
+    scrollToEnd();
+  },
+);
+watch(
+  () => props.followEnd,
+  (f) => {
+    if (!f) return;
+    userScrolledUp = false;
+    scrollToEnd();
   },
 );
 watch(() => props.language, () => view?.dispatch({ effects: languageConf.reconfigure(languageExt()) }));

@@ -196,6 +196,63 @@ describe("CoverLetterView", () => {
     w.unmount();
   });
 
+  it("shows the streaming text read-only in the TeX editor and then the final letter", async () => {
+    current = letterOut({ status: "generating", pdf_available: true });
+    const w = await mountView();
+    const store = useCoverLetterStore();
+    store.streamText = "\\documentclass{article}\nDear";
+    store.streamPhase = "revise";
+    await flushPromises();
+    await vi.waitFor(() => {
+      if (!q("[data-test=cl-editor] .cm-editor")) throw new Error("editor not loaded yet");
+    });
+    expect(shown("cl-editor")).toBe(true);
+    expect(q("[data-test=cl-pdf-frame]")).toBeNull();
+    expect(q("[data-test=cl-editor] .cm-content")!.textContent).toContain("Dear");
+    expect(q("[data-test=cl-editor] .cm-content")!.getAttribute("contenteditable")).toBe("false");
+    expect(q("[data-test=cl-stream-status]")!.textContent).toBe("Revising…");
+    expect(q("[data-test=cl-progress]")).not.toBeNull();
+    expect(q("[data-test=cl-view-pdf]")!.classList).toContain("v-btn--disabled");
+    expect((q("[data-test=cl-chat-input] textarea") as HTMLTextAreaElement).disabled).toBe(true);
+    expect(q("[data-test=cl-repair]")).toBeNull();
+    for (const a of ["cl-save", "cl-attach", "cl-download", "cl-regenerate", "cl-delete"]) {
+      expect(q(`[data-test=${a}]`)!.classList, a).toContain("v-btn--disabled");
+    }
+    // the stream text is not a user edit
+    expect(q("[data-test=cl-dirty-hint]")).toBeNull();
+
+    store.streamPhase = "repair";
+    await flushPromises();
+    expect(q("[data-test=cl-stream-status]")!.textContent).toBe("Fixing the compile error…");
+
+    // stream over, the reloaded letter replaces the stream text
+    store.streamText = null;
+    store.streamPhase = null;
+    store.letter = letterOut({ status: "generating", content: "\\documentclass{article}\nFinal letter", pdf_available: false });
+    await flushPromises();
+    expect(q("[data-test=cl-stream-status]")).toBeNull();
+    expect(q("[data-test=cl-editor] .cm-content")!.textContent).toContain("Final letter");
+    expect(q("[data-test=cl-dirty-hint]")).toBeNull();
+    store.letter = letterOut({ content: "\\documentclass{article}\nFinal letter", pdf_available: false });
+    await flushPromises();
+    expect(q("[data-test=cl-save]")!.classList).toContain("v-btn--disabled"); // not dirty
+    store.stopPolling();
+    w.unmount();
+  });
+
+  it("shows the streaming text in the text-format editor with the phase status", async () => {
+    current = letterOut({ format: "text", status: "generating", content: "", pdf_available: false });
+    const w = await mountView();
+    const store = useCoverLetterStore();
+    store.streamText = "Dear Sir";
+    store.streamPhase = "generate";
+    await flushPromises();
+    expect(q("[data-test=cl-editor] .cm-content")!.textContent).toContain("Dear Sir");
+    expect(q("[data-test=cl-stream-status]")!.textContent).toBe("Writing the cover letter…");
+    store.stopPolling();
+    w.unmount();
+  });
+
   it("shows a hint with the README link without a compiler", async () => {
     current = letterOut({ compiler_available: false, pdf_available: false });
     const w = await mountView();

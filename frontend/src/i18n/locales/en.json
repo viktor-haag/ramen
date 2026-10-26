@@ -668,6 +668,11 @@
       "generating": "The letter is being written…",
       "compiling": "The PDF is being compiled…"
     },
+    "stream": {
+      "generate": "Writing the cover letter…",
+      "revise": "Revising…",
+      "repair": "Fixing the compile error…"
+    },
     "language": {
       "posting": "Language of the posting",
       "de": "German",

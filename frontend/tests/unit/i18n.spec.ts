@@ -25,6 +25,11 @@ describe("i18n", () => {
     expect(keys(de)).toEqual(keys(en));
   });
 
+  it("has the streaming phase texts in both languages", () => {
+    expect(en.coverLetter.stream).toEqual({ generate: "Writing the cover letter…", revise: "Revising…", repair: "Fixing the compile error…" });
+    expect(de.coverLetter.stream).toEqual({ generate: "Schreibt Anschreiben…", revise: "Überarbeitet…", repair: "Behebt Kompilierfehler…" });
+  });
+
   it("loadLocale without a stored value is en", () => {
     expect(loadLocale()).toBe("en");
   });
