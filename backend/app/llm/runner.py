@@ -68,13 +68,23 @@ def run_call(
     *,
     json_schema: dict | None = None,
     max_tokens: int = 4096,
+    on_text: Callable[[str], None] | None = None,
 ) -> tuple[LLMResult, bool]:
-    """Call with an already resolved config. Returns (result, limit_exceeded after recording this call)."""
+    """Call with an already resolved config. Returns (result, limit_exceeded after recording this call).
+
+    With `on_text` the call is streamed (no json_schema: ValueError). An exception raised by `on_text` is a bug
+    in the caller: it aborts the call and is handled like any unexpected error (failed usage, `llm_unavailable`).
+    """
+    if on_text is not None and json_schema is not None:
+        raise ValueError("on_text (streaming) cannot be combined with json_schema")
     system, messages = build_messages(cfg)  # may raise AppError (e.g. no image support): nothing is sent
     client = _client(cfg)
     result, err = None, None
     try:
-        result = client.complete(system, messages, json_schema=json_schema, max_tokens=max_tokens)
+        if on_text is not None:
+            result = client.stream(system, messages, max_tokens=max_tokens, on_text=on_text)
+        else:
+            result = client.complete(system, messages, json_schema=json_schema, max_tokens=max_tokens)
     except LLMError as exc:
         err = exc
     except Exception as exc:  # noqa: BLE001
@@ -98,8 +108,11 @@ def llm_call(
     *,
     json_schema: dict | None = None,
     max_tokens: int = 4096,
+    on_text: Callable[[str], None] | None = None,
 ) -> tuple[LLMResult, bool]:
     """Resolve the config of `purpose` (ConflictError llm_not_configured), call, record, map errors."""
     with session_factory() as session:
         cfg = llm_configs.resolve(session, purpose)
-    return run_call(session_factory, cfg, purpose, build_messages, json_schema=json_schema, max_tokens=max_tokens)
+    return run_call(
+        session_factory, cfg, purpose, build_messages, json_schema=json_schema, max_tokens=max_tokens, on_text=on_text,
+    )
