@@ -3,12 +3,18 @@
 Endpoints that start a job set the busy status and commit before handing the draft to the job, so the
 `202` response and every following `ensure_idle` already see it.
 """
+import asyncio
+import json
 import re
+import time
+from collections.abc import AsyncIterator
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -31,6 +37,8 @@ PATH = "/applications/{app_id}/cover-letter"
 REPAIR_MESSAGE = "Fix the compile error"
 NO_PDF = "There is no current PDF of the cover letter"
 NAME_PREFIX = {"de": "Anschreiben", "en": "Cover_letter"}
+POLL_SECONDS = 0.15  # how often the stream checks the draft's status and the job's buffer
+PING_SECONDS = 15.0  # keep-alive comment after this long without an event
 _UNSAFE_COMPANY = re.compile(r"[^A-Za-z0-9äöüÄÖÜß.\-]+")
 
 Lang = Literal["de", "en"]
@@ -215,6 +223,55 @@ def source(app_id: int, lang: Lang = "en", session: Session = Depends(get_sessio
         content=cl.content.encode("utf-8"),
         media_type=("text/x-tex" if latex else "text/plain") + "; charset=utf-8",
         headers={"Content-Disposition": content_disposition(name)},
+    )
+
+
+def _still_generating(request: Request, cl_id: int, created_at: datetime) -> bool:
+    """True while the same draft (id and `created_at`) exists and is `generating`; short session of its own."""
+    with request.app.state.session_factory() as session:
+        row = session.execute(
+            select(CoverLetter.status, CoverLetter.created_at).where(CoverLetter.id == cl_id)
+        ).one_or_none()
+    return row is not None and row.created_at == created_at and row.status == CoverLetterStatus.generating
+
+
+def _event(name: str, data: dict) -> str:
+    return f"event: {name}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.get(f"{PATH}/stream")
+def stream(app_id: int, request: Request, session: Session = Depends(get_session)) -> StreamingResponse:
+    """Server-sent events with the running job's streamed text (spec section 5).
+
+    `text` events carry `{phase, text, seq}` whenever `seq` changes, `: ping` comments keep the connection
+    alive, and `end` follows once the draft is gone or no longer `generating`. The request session is closed
+    before streaming; each poll reads the status with a short session of its own.
+    """
+    cl = svc.get_for_application(session, app_id)
+    cl_id, created_at = cl.id, cl.created_at
+    session.close()
+
+    async def gen() -> AsyncIterator[str]:
+        last_seq: int | None = None
+        last_sent = time.monotonic()
+        while True:
+            if await request.is_disconnected():
+                return
+            if not await run_in_threadpool(_still_generating, request, cl_id, created_at):
+                yield _event("end", {})
+                return
+            snap = request.app.state.cover_letter_jobs.stream_snapshot(cl_id, created_at)
+            if snap is not None and snap.seq != last_seq:
+                last_seq = snap.seq
+                last_sent = time.monotonic()
+                yield _event("text", {"phase": snap.phase, "text": snap.text, "seq": snap.seq})
+            elif time.monotonic() - last_sent >= PING_SECONDS:
+                last_sent = time.monotonic()
+                yield ": ping\n\n"
+            await asyncio.sleep(POLL_SECONDS)
+
+    return StreamingResponse(
+        gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
 
 
