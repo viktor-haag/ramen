@@ -1,4 +1,4 @@
-"""The nine JobSpy job boards, one plugin each (order: DACH-relevant boards first)."""
+"""The nine JobSpy job boards, one plugin each (the registry lists them alphabetically)."""
 
 from .base import GlassdoorSettings, IndeedSettings, JobSpyExtractor, JobSpyFetchSettings, JobSpySettings
 
@@ -34,12 +34,8 @@ class GoogleJobsExtractor(JobSpyExtractor):
     display_name = "Google Jobs (JobSpy)"
     site = "google"
     settings_schema = JobSpySettings
-
-    def scrape_kwargs(self, profile, settings):
-        kwargs = super().scrape_kwargs(profile, settings)
-        where = f" in {profile.location}" if profile.location else ""
-        kwargs["google_search_term"] = f"{profile.keywords} jobs{where}"
-        return kwargs
+    # No google_search_term: jobspy then builds the query itself from search_term, location,
+    # hours_old, is_remote and job_type (an explicit term would silently disable those filters).
 
 
 class ZipRecruiterExtractor(JobSpyExtractor):

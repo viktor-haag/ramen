@@ -142,10 +142,10 @@ def test_settings_defaults_and_bounds():
     assert s.country.value == "germany" and s.proxies is None
     assert ext("indeed").settings_schema().country.value == "germany"
     schema = ext("linkedin").settings_schema
-    for bad in ({"results_wanted": 0}, {"results_wanted": 201}, {"hours_old": 0}):
+    for bad in ({"results_wanted": 0}, {"results_wanted": 201}, {"hours_old": -1}, {"hours_old": None}):
         with pytest.raises(ValueError):
             schema(**bad)
-    assert schema(hours_old=None).hours_old is None
+    assert schema(hours_old=0).hours_old == 0
     props = schema.model_json_schema()["properties"]
     assert props["proxies"]["format"] == "password"
     assert "timeout_seconds" not in props
@@ -168,14 +168,14 @@ def test_params_full_profile(fake):
     assert rec.calls == [dict(
         site_name=["indeed"], search_term="python", location="München", distance=31, is_remote=True,
         job_type="fulltime", results_wanted=10, hours_old=24, country_indeed="austria",
-        proxies=["a:1", "b:2"], description_format="plain", fetch_description=False, verbose=0,
+        proxies=["a:1", "b:2"], description_format="html", fetch_description=False, verbose=0,
     )]
 
 
 def test_params_minimal_profile(fake):
     rec = fake(frame([]))
     run("linkedin", SearchProfileDTO(keywords="python", employment_type="parttime", remote=False),
-        hours_old=None, fetch_description=True)
+        hours_old=0, fetch_description=True)
     (kw,) = rec.calls
     assert kw["location"] is None and kw["distance"] is None
     assert kw["is_remote"] is False and kw["job_type"] == "parttime"
@@ -191,13 +191,21 @@ def test_params_without_fetch_description_setting(fake):
     assert kw["country_indeed"] == "germany"
 
 
-def test_google_search_term(fake):
+def test_hours_old_default_is_passed_through(fake):
+    rec = fake(frame([]))
+    run("linkedin")
+    run("linkedin", hours_old=24)
+    run("linkedin", hours_old=0)
+    assert [c["hours_old"] for c in rec.calls] == [72, 24, None]
+
+
+def test_google_jobs_lets_jobspy_build_the_query(fake):
     rec = fake(frame([]))
     run("google_jobs", SearchProfileDTO(keywords="python dev", location="Berlin"))
-    run("google_jobs", SearchProfileDTO(keywords="python dev"))
     assert rec.calls[0]["site_name"] == ["google"]
-    assert rec.calls[0]["google_search_term"] == "python dev jobs in Berlin"
-    assert rec.calls[1]["google_search_term"] == "python dev jobs"
+    assert "google_search_term" not in rec.calls[0]
+    assert rec.calls[0]["search_term"] == "python dev" and rec.calls[0]["location"] == "Berlin"
+    assert rec.calls[0]["hours_old"] == 72
 
 
 @pytest.mark.parametrize("name", list(BY_NAME))
@@ -253,6 +261,27 @@ def test_mapping_location_parts_and_types(fake):
     assert (d.employment_type, d.contract_type, d.remote, d.published_at) == (None, None, None, None)
 
 
+def test_description_html_keeps_paragraphs(fake):
+    html = "<p>Intro &amp; more</p><ul><li>Python</li><li>SQL</li></ul><p>Line<br>break &lt;3</p>"
+    fake(frame([full_post(description=html)]))
+    (p,) = run("linkedin")
+    assert p.description == "Intro & more\n- Python\n- SQL\nLine\nbreak <3"
+    assert "<" not in p.description.replace("<3", "")
+    html_to_text = mods()["mapping"].html_to_text
+    assert html_to_text("") is None and html_to_text(None) is None and html_to_text("<p></p>") is None
+
+
+def test_json_safe_non_finite_floats():
+    json_safe = mods()["mapping"]._json_safe
+    assert json_safe(float("inf")) is None and json_safe(float("-inf")) is None
+    assert json_safe(float("nan")) is None and json_safe(1.5) == 1.5
+    assert json_safe([1.0, float("inf")]) == [1.0, None]
+    row = full_post().model_dump() | {"company_rating": float("inf")}
+    posting = mods()["mapping"].to_posting(row, "linkedin")
+    assert posting.raw.get("company_rating") is None
+    json.dumps(posting.raw, allow_nan=False)
+
+
 def test_external_id_fallback_hash(fake):
     url = "https://www.indeed.com/viewjob?jk=1"
     fake(frame([full_post(id=None, job_url=url), full_post(id="", job_url=url)]))
@@ -290,10 +319,11 @@ def test_execute_search_with_plain_dicts(fake):
     rec = fake(frame([full_post()]))
     out = execute_search(
         str(PLUGIN_INIT), "GlassdoorExtractor", {"keywords": "python", "location": "Wien"},
-        {"country": "austria", "fetch_description": True, "hours_old": None},
+        {"country": "austria", "fetch_description": True, "hours_old": 0},
     )
     assert out[0]["source"] == "glassdoor" and out[0]["published_at"].startswith("2026-10-20")
     assert rec.calls[0]["country_indeed"] == "austria" and rec.calls[0]["fetch_description"] is True
+    assert rec.calls[0]["hours_old"] is None
 
 
 # ---------- errors ----------
@@ -314,6 +344,15 @@ def test_partial_results_with_error_return_results(fake, caplog):
         postings = run("linkedin")
     assert len(postings) == 1
     assert "blocked after page 1" in caplog.text
+
+
+def test_jobspy_warnings_are_logged(fake, caplog):
+    df = frame([full_post()])
+    df.attrs["warnings"] = {"linkedin": ["rate limited soon"]}
+    fake(df)
+    with caplog.at_level("INFO"):
+        assert len(run("linkedin")) == 1
+    assert "linkedin" in caplog.text and "rate limited soon" in caplog.text
 
 
 def test_no_rows_no_error_returns_empty(fake):

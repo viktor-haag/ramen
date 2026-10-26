@@ -70,13 +70,13 @@ def parse_proxies(text: str | None) -> list[str]:
 
 class JobSpySettings(BaseModel):
     results_wanted: int = Field(25, ge=1, le=200, title="Results per search")
-    hours_old: int | None = Field(
-        72, ge=1, title="Posted within (hours)",
-        description="Only postings of the last … hours (empty = all).",
+    hours_old: int = Field(
+        72, ge=0, title="Posted within (hours)",
+        description="Only postings of the last … hours (0 = all postings).",
     )
     proxies: str | None = Field(
         None, title="Proxies",
-        description="Optional; several entries separated by commas or line breaks, "
+        description="Optional; several entries separated by commas, "
         "e.g. user:password@host:port.",
         json_schema_extra={"format": "password"},
     )
@@ -118,9 +118,9 @@ class JobSpyExtractor(Extractor):
             is_remote=profile.remote is True,
             job_type=profile.employment_type if profile.employment_type in ("fulltime", "parttime") else None,
             results_wanted=settings.results_wanted,
-            hours_old=settings.hours_old,
+            hours_old=settings.hours_old or None,  # 0 = all postings
             proxies=parse_proxies(settings.proxies),
-            description_format="plain",
+            description_format="html",  # converted to text in mapping (keeps paragraphs)
             fetch_description=bool(getattr(settings, "fetch_description", False))
             if self.has_fetch_description else False,
             verbose=0,
@@ -136,6 +136,8 @@ class JobSpyExtractor(Extractor):
 
         df = jobspy.scrape_jobs(**self.scrape_kwargs(profile, settings))
         rows = df.to_dict("records")
+        for site, warnings in ((getattr(df, "attrs", None) or {}).get("warnings") or {}).items():
+            log.info("%s: JobSpy warnings for %s: %s", self.name, site, warnings)
         errors = (getattr(df, "attrs", None) or {}).get("errors") or {}
         error = errors.get(self.site) or "; ".join(str(v) for v in errors.values() if v)
         postings = [p for row in rows if (p := mapping.to_posting(row, self.name)) is not None]
