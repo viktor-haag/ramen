@@ -103,6 +103,7 @@ class PurposesIn(BaseModel):
     profile: int | None
     fit: int | None
     extraction: int | None
+    cover_letter: int | None
 
 
 class PurposesOut(PurposesIn):

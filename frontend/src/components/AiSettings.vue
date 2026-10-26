@@ -45,8 +45,8 @@ function testText(r: TestResult) {
 }
 
 // --- purposes ---
-const purposeKeys = ["profile", "fit", "extraction"] as const;
-const purposeDraft = reactive<Record<(typeof purposeKeys)[number], number | null>>({ profile: null, fit: null, extraction: null });
+const purposeKeys = ["profile", "fit", "extraction", "cover_letter"] as const;
+const purposeDraft = reactive<Record<(typeof purposeKeys)[number], number | null>>({ profile: null, fit: null, extraction: null, cover_letter: null });
 const purposeItems = computed(() => [
   { value: null, title: t("ai.purposes.default") },
   ...store.configs.map((c) => ({ value: c.id, title: c.name })),

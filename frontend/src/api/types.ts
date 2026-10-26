@@ -345,6 +345,7 @@ export interface LlmPurposes {
   profile: number | null;
   fit: number | null;
   extraction: number | null;
+  cover_letter: number | null;
 }
 
 export interface LlmModelsIn {

@@ -152,7 +152,7 @@ def test_delete_rules(client):
     res = client.delete(f"/api/llm/configs/{a['id']}")
     assert res.status_code == 409 and res.json()["code"] == "llm_config_in_use"
     # a config assigned to a purpose cannot go
-    assert client.put("/api/llm/purposes", json={"profile": None, "fit": b["id"], "extraction": None}).status_code == 200
+    assert client.put("/api/llm/purposes", json={"profile": None, "fit": b["id"], "extraction": None, "cover_letter": None}).status_code == 200
     res = client.delete(f"/api/llm/configs/{b['id']}")
     assert res.status_code == 409 and res.json()["code"] == "llm_config_in_use"
     # an unassigned non-default one can
@@ -162,9 +162,9 @@ def test_delete_rules(client):
 
 def test_delete_only_config_resets_purposes(client):
     a = create(client)
-    client.put("/api/llm/purposes", json={"profile": a["id"], "fit": a["id"], "extraction": None})
+    client.put("/api/llm/purposes", json={"profile": a["id"], "fit": a["id"], "extraction": None, "cover_letter": None})
     assert client.delete(f"/api/llm/configs/{a['id']}").status_code == 204
-    assert client.get("/api/llm/purposes").json() == {"profile": None, "fit": None, "extraction": None}
+    assert client.get("/api/llm/purposes").json() == {"profile": None, "fit": None, "extraction": None, "cover_letter": None}
     assert client.get("/api/llm/configs").json() == []
     # the next config becomes default again
     assert create(client, name="N")["is_default"] is True
@@ -173,12 +173,12 @@ def test_delete_only_config_resets_purposes(client):
 # --- purposes and resolve --------------------------------------------------------------------
 
 def test_purposes_get_put_and_unknown_config(client):
-    assert client.get("/api/llm/purposes").json() == {"profile": None, "fit": None, "extraction": None}
+    assert client.get("/api/llm/purposes").json() == {"profile": None, "fit": None, "extraction": None, "cover_letter": None}
     a = create(client)
-    res = client.put("/api/llm/purposes", json={"profile": a["id"], "fit": None, "extraction": a["id"]})
-    assert res.status_code == 200 and res.json() == {"profile": a["id"], "fit": None, "extraction": a["id"]}
+    res = client.put("/api/llm/purposes", json={"profile": a["id"], "fit": None, "extraction": a["id"], "cover_letter": None})
+    assert res.status_code == 200 and res.json() == {"profile": a["id"], "fit": None, "extraction": a["id"], "cover_letter": None}
     assert client.get("/api/llm/purposes").json() == res.json()
-    bad = client.put("/api/llm/purposes", json={"profile": 99, "fit": None, "extraction": None})
+    bad = client.put("/api/llm/purposes", json={"profile": 99, "fit": None, "extraction": None, "cover_letter": None})
     assert bad.status_code == 404 and bad.json()["code"] == "llm_config_not_found"
     assert client.get("/api/llm/purposes").json() == res.json()  # unchanged
     assert client.put("/api/llm/purposes", json={"profile": None}).status_code == 422
@@ -195,7 +195,7 @@ def test_resolve_purpose_then_default_then_not_configured(app, client):
     a, b = create(client), create(client, name="B", model="m-b", api_key="sk-b-0000")
     with app.state.session_factory() as s:
         assert llm_configs.resolve(s, "fit").id == a["id"]  # NULL purpose = default
-    client.put("/api/llm/purposes", json={"profile": None, "fit": b["id"], "extraction": None})
+    client.put("/api/llm/purposes", json={"profile": None, "fit": b["id"], "extraction": None, "cover_letter": None})
     with app.state.session_factory() as s:
         cfg = llm_configs.resolve(s, "fit")
         assert (cfg.id, cfg.model, cfg.api_key, cfg.provider) == (b["id"], "m-b", "sk-b-0000", "anthropic")

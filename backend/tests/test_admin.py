@@ -130,7 +130,7 @@ def test_reset_clears_everything(client, app, db):
         "posting_fit": 2, "posting_match": 3, "status_change": 1, "appointment": 1, "contact": 1, "attachment": 1,
         "application": 1, "job_posting": 3, "search_run": 2, "search_profile": 2, "plugin_setting": 1,
         "llm_usage": 1, "llm_purpose": 1, "llm_config": 1, "app_setting": 1, "profile_document": 1,
-        "user_profile": 1,
+        "user_profile": 1, "cover_letter_message": 0, "cover_letter": 0, "cover_letter_template": 0,
     }}
     db.expire_all()
     for model in (Posting, PostingFit, PostingMatch, SearchProfile, SearchRun, Application, StatusChange,

@@ -511,7 +511,8 @@
       "default": "Default configuration",
       "profile": "Profile generation",
       "fit": "Fit evaluation",
-      "extraction": "Text extraction from images and scans"
+      "extraction": "Text extraction from images and scans",
+      "cover_letter": "Cover letters"
     },
     "fit": {
       "title": "Fit evaluation",

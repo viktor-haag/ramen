@@ -59,7 +59,7 @@ beforeEach(() => {
   routeGuards.length = 0;
   for (const m of [get, post, put, patch, del, vi.mocked(api.upload)]) m.mockReset();
   configs = [cfg()];
-  purposes = { profile: null, fit: null, extraction: null };
+  purposes = { profile: null, fit: null, extraction: null, cover_letter: null };
   docs = [];
   prof = profile();
   get.mockImplementation((async (path: string) => {
@@ -149,7 +149,7 @@ describe("documents", () => {
 
   it("disables extraction with a tooltip when the extraction config has no image support", async () => {
     configs = [cfg({ id: 1, supports_images: true }), cfg({ id: 2, name: "Local", provider: "openai_compatible", supports_images: false, is_default: false })];
-    purposes = { profile: null, fit: null, extraction: 2 };
+    purposes = { profile: null, fit: null, extraction: 2, cover_letter: null };
     docs = [doc({ id: 3, kind: "pdf_scan", text: null, text_source: null, usable: false })];
     const w = await mountView();
     const btn = q("[data-test=doc-extract-3]") as HTMLButtonElement;
@@ -257,7 +257,7 @@ describe("documents", () => {
 describe("provider notice", () => {
   it("names the provider and model of the resolved profile and extraction configurations", async () => {
     configs = [cfg({ id: 1, name: "Main", provider: "anthropic", model: "claude-x" }), cfg({ id: 2, name: "Vision", provider: "openai", model: "gpt-v", is_default: false })];
-    purposes = { profile: null, fit: null, extraction: 2 };
+    purposes = { profile: null, fit: null, extraction: 2, cover_letter: null };
     const w = await mountView();
     const notice = q("[data-test=provider-notice]")!.textContent!;
     expect(notice).toContain("Anthropic");
@@ -432,9 +432,9 @@ describe("llm store resolution", () => {
     setActivePinia(pinia);
     const llm = useLlmStore();
     llm.configs = [cfg({ id: 1, is_default: false, name: "A" }), cfg({ id: 2, is_default: true, name: "B", provider: "openai" })];
-    llm.purposes = { profile: null, fit: null, extraction: null };
+    llm.purposes = { profile: null, fit: null, extraction: null, cover_letter: null };
     expect(useMeStore().profileConfig?.id).toBe(2);
-    llm.purposes = { profile: 1, fit: null, extraction: null };
+    llm.purposes = { profile: 1, fit: null, extraction: null, cover_letter: null };
     expect(useMeStore().profileConfig?.id).toBe(1);
   });
 });
@@ -555,7 +555,7 @@ describe("fix round 1", () => {
     expect(q("[data-test=provider-notice]")!.textContent).toContain("Anthropic");
     expect(useLlmStore().loaded).toBe(true);
     configs = [];
-    purposes = { profile: null, fit: null, extraction: null };
+    purposes = { profile: null, fit: null, extraction: null, cover_letter: null };
     await useMeStore().load(); // the llm store is already loaded; it must still refetch
     await flushPromises();
     expect(useLlmStore().configs).toEqual([]);
@@ -575,7 +575,7 @@ describe("fix round 1", () => {
 
   it("hides the extraction line when the extraction configuration cannot read images", async () => {
     configs = [cfg({ id: 1 }), cfg({ id: 2, name: "Text only", provider: "openai_compatible", model: "local", supports_images: false, is_default: false })];
-    purposes = { profile: null, fit: null, extraction: 2 };
+    purposes = { profile: null, fit: null, extraction: 2, cover_letter: null };
     const w = await mountView();
     const notice = q("[data-test=provider-notice]")!.textContent!;
     expect(notice).toContain("Anthropic");

@@ -511,7 +511,8 @@
       "default": "Standardkonfiguration",
       "profile": "Profilerstellung",
       "fit": "Fit-Bewertung",
-      "extraction": "Texterkennung aus Bildern und Scans"
+      "extraction": "Texterkennung aus Bildern und Scans",
+      "cover_letter": "Anschreiben"
     },
     "fit": {
       "title": "Fit-Bewertung",

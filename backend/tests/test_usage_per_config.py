@@ -99,7 +99,7 @@ def test_config_limit_blocks_only_its_purpose(client, app):
         fit_cfg = _post_config(client, "Claude", daily_limit_kind="tokens", daily_limit_value=100)
         prof_cfg = _post_config(client, "Prof", daily_limit_kind="tokens", daily_limit_value=100)
         assert client.put("/api/llm/purposes", json={
-            "profile": prof_cfg["id"], "fit": fit_cfg["id"], "extraction": None}).status_code == 200
+            "profile": prof_cfg["id"], "fit": fit_cfg["id"], "extraction": None, "cover_letter": None}).status_code == 200
         ids = _seed_fit(app)
         sf = app.state.session_factory
         with sf() as s:
@@ -249,7 +249,7 @@ def test_single_actions_report_config_limit_when_global_is_fine(client, app, mon
     original, app.state.fit_queue = app.state.fit_queue, q
     try:
         cfg = _post_config(client, "Claude", daily_limit_kind="tokens", daily_limit_value=100)
-        assert client.put("/api/llm/purposes", json={"profile": cfg["id"], "fit": cfg["id"], "extraction": cfg["id"]}).status_code == 200
+        assert client.put("/api/llm/purposes", json={"profile": cfg["id"], "fit": cfg["id"], "extraction": cfg["id"], "cover_letter": None}).status_code == 200
         ids = _seed_fit(app)
         sf = app.state.session_factory
         with sf() as s:

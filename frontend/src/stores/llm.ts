@@ -10,7 +10,7 @@ export type TestResult = { ok: true; model: string; latencyMs: number } | { ok: 
 
 export const useLlmStore = defineStore("llm", () => {
   const configs = ref<LlmConfigOut[]>([]);
-  const purposes = ref<LlmPurposes>({ profile: null, fit: null, extraction: null });
+  const purposes = ref<LlmPurposes>({ profile: null, fit: null, extraction: null, cover_letter: null });
   const settings = ref<AppSettings | null>(null);
   const usage = ref<LlmUsageOut | null>(null);
   const loaded = ref(false);
@@ -133,7 +133,7 @@ export const useLlmStore = defineStore("llm", () => {
   /** Forget everything (after "Reset everything" the server state is gone). */
   function clear() {
     configs.value = [];
-    purposes.value = { profile: null, fit: null, extraction: null };
+    purposes.value = { profile: null, fit: null, extraction: null, cover_letter: null };
     settings.value = null;
     usage.value = null;
     loaded.value = false;

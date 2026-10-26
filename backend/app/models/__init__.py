@@ -5,17 +5,22 @@ from app.models.enums import (
     AppointmentKind,
     AppStatus,
     AttachmentKind,
+    CoverLetterFormat,
+    CoverLetterLanguage,
+    CoverLetterStatus,
     DocumentKind,
     FitRating,
     FitStatus,
     LLMProvider,
     LLMPurposeKind,
+    MessageRole,
     RunStatus,
     RunTrigger,
     TextSource,
     ThinkingLevel,
     TriageStatus,
 )
+from app.models.cover_letter import CoverLetter, CoverLetterMessage, CoverLetterTemplate
 from app.models.fit import PostingFit
 from app.models.llm import AppSetting, LLMConfig, LLMPurpose, LLMUsage
 from app.models.plugin_setting import PluginSetting
@@ -29,4 +34,6 @@ __all__ = [
     "StatusChange", "DocumentKind", "LLMProvider", "LLMPurposeKind", "TextSource",
     "ThinkingLevel", "AppSetting", "LLMConfig", "LLMPurpose", "LLMUsage", "ProfileDocument",
     "UserProfile", "FitRating", "FitStatus", "PostingFit",
+    "CoverLetter", "CoverLetterMessage", "CoverLetterTemplate", "CoverLetterFormat",
+    "CoverLetterLanguage", "CoverLetterStatus", "MessageRole",
 ]

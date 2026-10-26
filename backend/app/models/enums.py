@@ -66,6 +66,7 @@ class LLMPurposeKind(StrEnum):
     profile = "profile"
     fit = "fit"
     extraction = "extraction"
+    cover_letter = "cover_letter"
 
 
 class DocumentKind(StrEnum):
@@ -92,3 +93,25 @@ class FitStatus(StrEnum):
     running = "running"
     done = "done"
     error = "error"
+
+
+class CoverLetterFormat(StrEnum):
+    latex = "latex"
+    text = "text"
+
+
+class CoverLetterLanguage(StrEnum):
+    posting = "posting"
+    de = "de"
+    en = "en"
+
+
+class CoverLetterStatus(StrEnum):
+    idle = "idle"
+    generating = "generating"
+    compiling = "compiling"
+
+
+class MessageRole(StrEnum):
+    user = "user"
+    assistant = "assistant"

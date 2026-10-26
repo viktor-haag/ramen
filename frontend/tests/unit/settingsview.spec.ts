@@ -35,7 +35,7 @@ beforeEach(() => {
     if (path === "/plugins") return plugins as never;
     if (path === "/prompts") return [] as never;
     if (path === "/llm/configs") return [] as never;
-    if (path === "/llm/purposes") return { profile: null, fit: null, extraction: null } as never;
+    if (path === "/llm/purposes") return { profile: null, fit: null, extraction: null, cover_letter: null } as never;
     if (path === "/settings") return { fit_auto: false, fit_concurrency: 2, daily_limit_kind: "none", daily_limit_value: null } as never;
     if (path === "/version") return { current: "0.1.0", latest: "0.1.0", update_available: false, release_url: null, published_at: null, checked_at: null, error: null, enabled: true, disabled_by_env: false } as never;
     if (path === "/llm/usage") {

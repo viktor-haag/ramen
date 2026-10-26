@@ -13,6 +13,9 @@ from app.models import (
     AppSetting,
     Attachment,
     Contact,
+    CoverLetter,
+    CoverLetterMessage,
+    CoverLetterTemplate,
     LLMConfig,
     LLMPurpose,
     LLMUsage,
@@ -33,6 +36,8 @@ log = logging.getLogger(__name__)
 
 # Children before parents, so every reported count is the rows the table really had.
 _RESET_ORDER = (
+    ("cover_letter_message", CoverLetterMessage),
+    ("cover_letter", CoverLetter),
     ("posting_fit", PostingFit),
     ("posting_match", PostingMatch),
     ("status_change", StatusChange),
@@ -50,7 +55,11 @@ _RESET_ORDER = (
     ("app_setting", AppSetting),
     ("profile_document", ProfileDocument),
     ("user_profile", UserProfile),
+    ("cover_letter_template", CoverLetterTemplate),
 )
+
+# The built-in template is seeded by a migration only, so a reset must keep it.
+_RESET_KEEP = {"cover_letter_template": CoverLetterTemplate.builtin.is_(False)}
 
 
 def _ensure_no_active_runs(session: Session) -> None:
@@ -72,7 +81,10 @@ def reset_all(session: Session) -> dict[str, dict[str, int]]:
     _ensure_no_active_runs(session)
     counts: dict[str, int] = {}
     for name, model in _RESET_ORDER:
-        counts[name] = session.execute(delete(model)).rowcount
+        stmt = delete(model)
+        if name in _RESET_KEEP:
+            stmt = stmt.where(_RESET_KEEP[name])
+        counts[name] = session.execute(stmt).rowcount
     return {"deleted": counts}
 
 

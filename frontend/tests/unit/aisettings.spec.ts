@@ -46,7 +46,7 @@ beforeEach(() => {
   setLocale("en");
   for (const m of [get, post, put, del]) m.mockReset();
   configs = [cfg(), cfg({ id: 2, name: "Local", provider: "openai_compatible", base_url: "http://x/v1", api_key: null, has_api_key: false, supports_images: false, is_default: false })];
-  purposes = { profile: null, fit: null, extraction: null };
+  purposes = { profile: null, fit: null, extraction: null, cover_letter: null };
   settings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true };
   usageData = usage();
   get.mockImplementation(async (path: string) => {
@@ -378,12 +378,12 @@ describe("AiSettings", () => {
   });
 
   it("saves purposes with null for Default", async () => {
-    put.mockResolvedValue({ profile: 2, fit: null, extraction: null } as never);
+    put.mockResolvedValue({ profile: 2, fit: null, extraction: null, cover_letter: null } as never);
     const w = await mountSettings();
     selectByTest(w, "llm-purpose-profile").vm.$emit("update:modelValue", 2);
     await flushPromises();
     await click("[data-test=llm-purposes-save]");
-    expect(put).toHaveBeenCalledWith("/llm/purposes", { profile: 2, fit: null, extraction: null });
+    expect(put).toHaveBeenCalledWith("/llm/purposes", { profile: 2, fit: null, extraction: null, cover_letter: null });
     w.unmount();
   });
 
@@ -551,12 +551,12 @@ describe("llm store save fallbacks", () => {
 
   it("savePurposes has no inline fields, so every error reaches the snackbar", async () => {
     put.mockRejectedValue(invalid("profile"));
-    const res = await useLlmStore().savePurposes({ profile: 1, fit: null, extraction: null });
+    const res = await useLlmStore().savePurposes({ profile: 1, fit: null, extraction: null, cover_letter: null });
     expect(res.ok).toBe(false);
     expect(useNotifyStore().visible).toBe(true);
     useNotifyStore().visible = false;
     put.mockRejectedValue(new ApiError(500, null, {}, "boom"));
-    await useLlmStore().savePurposes({ profile: 1, fit: null, extraction: null });
+    await useLlmStore().savePurposes({ profile: 1, fit: null, extraction: null, cover_letter: null });
     expect(useNotifyStore().message).toBe("boom");
   });
 });
