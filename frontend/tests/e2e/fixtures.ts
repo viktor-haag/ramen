@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -11,6 +11,16 @@ const NO_PROXY = { NO_PROXY: "127.0.0.1,localhost", no_proxy: "127.0.0.1,localho
 
 const FRONTEND = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const BACKEND = resolve(FRONTEND, "../backend");
+
+/** Kills the process and its children (POSIX: the process group; Windows: the process tree). */
+function killTree(proc: ChildProcess) {
+  try {
+    if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"]);
+    else process.kill(-proc.pid!, "SIGTERM");
+  } catch {
+    /* already gone */
+  }
+}
 
 function freePort(): Promise<number> {
   return new Promise((ok, fail) => {
@@ -67,11 +77,7 @@ export const test = base.extend<{ baseURL: string; fakeLlmUrl: string }>({
       await waitUp(`http://127.0.0.1:${port}/v1/models`, proc, () => output);
       await use(`http://127.0.0.1:${port}/v1`);
     } finally {
-      try {
-        process.kill(-proc.pid!, "SIGTERM");
-      } catch {
-        /* already gone */
-      }
+      killTree(proc);
     }
   },
 
@@ -93,6 +99,8 @@ export const test = base.extend<{ baseURL: string; fakeLlmUrl: string }>({
           JOBTRACKER_FRONTEND_DIST: join(FRONTEND, "dist"),
           JOBTRACKER_POOL_SIZE: "1",
           JOBTRACKER_UPDATE_CHECK: "false",
+          // Never compile PDFs in e2e, even when Tectonic is installed locally.
+          JOBTRACKER_TECTONIC: join(dataDir, "no-tectonic"),
         },
       },
     );
@@ -105,12 +113,8 @@ export const test = base.extend<{ baseURL: string; fakeLlmUrl: string }>({
       await use(url);
     } finally {
       // The runner pool spawns child processes: kill the whole process group.
-      try {
-        process.kill(-proc.pid!, "SIGTERM");
-      } catch {
-        /* already gone */
-      }
-      rmSync(dataDir, { recursive: true, force: true });
+      killTree(proc);
+      rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     }
   },
 });

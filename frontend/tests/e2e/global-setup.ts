@@ -4,5 +4,5 @@ import { fileURLToPath } from "node:url";
 
 /** Build the frontend once; the per-test backends serve frontend/dist. */
 export default function globalSetup() {
-  execFileSync("npm", ["run", "build"], { cwd: resolve(dirname(fileURLToPath(import.meta.url)), "../.."), stdio: "inherit" });
+  execFileSync("npm", ["run", "build"], { cwd: resolve(dirname(fileURLToPath(import.meta.url)), "../.."), stdio: "inherit", shell: process.platform === "win32" });
 }

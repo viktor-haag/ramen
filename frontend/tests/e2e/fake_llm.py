@@ -5,9 +5,11 @@ Usage: python fake_llm.py <port>
 GET  /v1/models            -> one fake model
 POST /v1/chat/completions  -> a canned transcription when the request contains an image part,
                               a canned fit rating when the system prompt carries the fit instructions,
+                              a canned cover letter {"document", "note"} when it carries the cover letter instructions,
                               otherwise a canned profile with all eight headings.
 """
 import json
+import re
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -16,6 +18,23 @@ TRANSCRIPTION = "Jane Doe - Python developer, 5 years"
 FIT = json.dumps({"rating": "good", "explanation": "Strong Python match."})
 # Distinctive phrase of the fit system prompt (backend/app/services/fit.py).
 FIT_MARKER = "You judge how well a job posting fits a job seeker"
+# Distinctive phrase of the cover letter system prompt (backend/app/services/prompts.py).
+COVER_MARKER = "You write a cover letter"
+OPENING = "Opening paragraph: the position and why you are writing."
+LATEX_LETTER = (
+    "\\documentclass[11pt]{article}\n"
+    "\\usepackage[a4paper,margin=2.5cm]{geometry}\n"
+    "\\begin{document}\n"
+    "Dear Hiring Team,\n\n" + OPENING + "\n\n"
+    "Main paragraph: what you bring, backed by evidence.\n\n"
+    "Sincerely,\n\nJane Doe\n"
+    "\\end{document}\n"
+)
+TEXT_LETTER = (
+    "Dear Hiring Team,\n\n" + OPENING + "\n\n"
+    "Main paragraph: what you bring, backed by evidence.\n\n"
+    "Sincerely,\nJane Doe\n"
+)
 PROFILE = """## Summary
 Jane Doe is a Python developer with five years of experience.
 
@@ -58,6 +77,21 @@ def is_fit(body: dict) -> bool:
     return False
 
 
+def role_text(body: dict, *roles: str) -> str:
+    return " ".join(str(m.get("content")) for m in body.get("messages", []) if m.get("role") in roles)
+
+
+def cover_letter(body: dict) -> str:
+    """Generate: the default letter (LaTeX or plain text, by the system prompt); revise: one paragraph replaced."""
+    document = TEXT_LETTER if "plain text" in role_text(body, "system", "developer") else LATEX_LETTER
+    user = role_text(body, "user")
+    if "Change the letter as follows:" in user:
+        m = re.search(r"<current>\n(.*?)\n</current>", user, re.DOTALL)
+        document = (m.group(1) if m else document).replace(OPENING, "Revised opening paragraph.")
+        return json.dumps({"document": document, "note": "Updated."})
+    return json.dumps({"document": document, "note": "Draft ready."})
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, status: int, payload: dict) -> None:
         data = json.dumps(payload).encode()
@@ -83,7 +117,10 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             self._send(400, {"error": {"message": "invalid json"}})
             return
-        text = FIT if is_fit(body) else TRANSCRIPTION if has_image(body) else PROFILE
+        if COVER_MARKER in role_text(body, "system", "developer"):
+            text = cover_letter(body)
+        else:
+            text = FIT if is_fit(body) else TRANSCRIPTION if has_image(body) else PROFILE
         self._send(200, {
             "id": "chatcmpl-fake",
             "object": "chat.completion",
