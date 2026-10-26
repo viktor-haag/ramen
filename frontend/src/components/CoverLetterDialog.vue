@@ -28,6 +28,8 @@ const documentIds = ref<number[]>([]);
 const notes = ref("");
 const confirming = ref(false);
 const busy = ref(false);
+/** False until the form was filled; submitting earlier would send incomplete defaults. */
+const ready = ref(false);
 
 const hasProfile = computed(() => !!me.profile?.profile_markdown);
 const builtinId = computed(() => templates.items.find((x) => x.builtin)?.id ?? null);
@@ -53,8 +55,10 @@ watch(
   async (open) => {
     if (!open) return;
     confirming.value = false;
+    ready.value = false;
     await Promise.all([me.loaded ? undefined : me.load(), templates.loaded ? undefined : templates.load()]);
     fill();
+    ready.value = true;
   },
   { immediate: true },
 );
@@ -73,7 +77,7 @@ function body(): CoverLetterIn {
 }
 
 function submit() {
-  if (notesTooLong.value) return;
+  if (!ready.value || notesTooLong.value) return;
   if (props.existing) confirming.value = true;
   else void send();
 }
@@ -152,7 +156,7 @@ async function send() {
       <v-card-actions>
         <v-spacer />
         <v-btn data-test="cl-cancel" @click="close">{{ t("common.cancel") }}</v-btn>
-        <v-btn color="primary" variant="flat" :loading="busy && !existing" :disabled="busy || notesTooLong" data-test="cl-submit" @click="submit">
+        <v-btn color="primary" variant="flat" :loading="busy && !existing" :disabled="busy || !ready || notesTooLong" data-test="cl-submit" @click="submit">
           {{ existing ? t("coverLetter.dialog.regenerate") : t("coverLetter.dialog.create") }}
         </v-btn>
       </v-card-actions>

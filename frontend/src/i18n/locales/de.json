@@ -661,7 +661,9 @@
     "create": "Anschreiben erstellen",
     "open": "Öffnen",
     "none": "Noch kein Anschreiben.",
-    "exists": "Ein Entwurf liegt vor.",
+    "exists": "Entwurf vorhanden",
+    "lastChange": "Letzte Änderung: {date}",
+    "errorHint": "Der letzte Lauf ist fehlgeschlagen. Details im Anschreiben.",
     "status": {
       "generating": "Das Anschreiben wird geschrieben …",
       "compiling": "Das PDF wird erzeugt …"
@@ -683,7 +685,7 @@
       "noText": "Für diese Unterlage liegt kein Text vor.",
       "notes": "Hinweise für dieses Anschreiben",
       "create": "Erstellen",
-      "regenerate": "Neu erzeugen",
+      "regenerate": "Neu erstellen",
       "replaceTitle": "Anschreiben ersetzen?",
       "replaceText": "Entwurf und Chatverlauf werden ersetzt."
     }

@@ -661,7 +661,9 @@
     "create": "Create cover letter",
     "open": "Open",
     "none": "No cover letter yet.",
-    "exists": "A draft exists.",
+    "exists": "Draft ready",
+    "lastChange": "Last change: {date}",
+    "errorHint": "The last run failed. Open the letter for details.",
     "status": {
       "generating": "The letter is being written…",
       "compiling": "The PDF is being compiled…"

@@ -4,10 +4,11 @@ import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import type { CoverLetterOut } from "@/api/types";
 import CoverLetterDialog from "@/components/CoverLetterDialog.vue";
+import { formatDateTime } from "@/domain/time";
 import { useCoverLetterStore } from "@/stores/coverLetter";
 
 const props = defineProps<{ applicationId: number }>();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const router = useRouter();
 const store = useCoverLetterStore();
 
@@ -37,7 +38,9 @@ function open() {
       </v-btn>
     </div>
     <div v-if="letter" class="text-body-2 text-medium-emphasis mt-1" data-test="cl-state">
-      {{ busy ? t(`coverLetter.status.${letter.status}`) : t("coverLetter.exists") }}
+      <span data-test="cl-status">{{ busy ? t(`coverLetter.status.${letter.status}`) : t("coverLetter.exists") }}</span>
+      <span v-if="!busy && letter.error" class="text-error" data-test="cl-error"> · {{ t("coverLetter.errorHint") }}</span>
+      · <span data-test="cl-last-change">{{ t("coverLetter.lastChange", { date: formatDateTime(letter.updated_at, locale) }) }}</span>
     </div>
     <div v-else class="text-body-2 text-medium-emphasis mt-1" data-test="cl-none">{{ t("coverLetter.none") }}</div>
     <CoverLetterDialog v-if="dialog" v-model="dialog" :application-id="applicationId" :existing="letter" />

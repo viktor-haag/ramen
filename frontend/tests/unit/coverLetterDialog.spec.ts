@@ -132,6 +132,26 @@ describe("CoverLetterDialog", () => {
     w.unmount();
   });
 
+  it("sends profile:false when no profile exists", async () => {
+    prof = profile(null);
+    const w = await mountDialog();
+    q("[data-test=cl-submit]")!.click();
+    await flushPromises();
+    expect(post.mock.calls[0]![1]).toMatchObject({ context: { profile: false } });
+    w.unmount();
+  });
+
+  it("drops stale and text-less documents and falls back to the default template when prefilling", async () => {
+    const w = await mountDialog(letterOut({ template_id: 99, context: { profile: true, document_ids: [11, 12, 404], notes: "" } }));
+    expect(q("[data-test=cl-template]")!.textContent).toContain("Standard");
+    q("[data-test=cl-submit]")!.click();
+    await flushPromises();
+    q("[data-test=confirm-ok]")!.click();
+    await flushPromises();
+    expect(post.mock.calls[0]![1]).toMatchObject({ template_id: 1, context: { document_ids: [11] } });
+    w.unmount();
+  });
+
   it("sends no template for plain text", async () => {
     const w = await mountDialog();
     q("[data-test=cl-format-text]")!.click();
@@ -183,6 +203,14 @@ describe("CoverLetterSection", () => {
     await w.get("[data-test=cl-open]").trigger("click");
     expect(w.get("[data-test=cl-open]").text()).toBe("Open");
     expect(push).toHaveBeenCalledWith({ name: "cover-letter", params: { id: "7" } });
+    w.unmount();
+  });
+
+  it("shows status and last change of an existing draft", async () => {
+    existingLetter = letterOut();
+    const w = await mountSection();
+    expect(w.get("[data-test=cl-status]").text()).toBe("Draft ready");
+    expect(w.get("[data-test=cl-last-change]").text()).toContain("2026");
     w.unmount();
   });
 
