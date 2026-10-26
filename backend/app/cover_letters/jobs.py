@@ -8,8 +8,8 @@ left behind. Every error ends up in `error` as `{code, params, detail}`; `status
 While a job's LLM call runs, its visible text is kept in an in-memory stream buffer (never in the database)
 that request threads read via `stream_snapshot`; the buffer is dropped when the job ends.
 """
-import logging
 import itertools
+import logging
 import threading
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, wait
@@ -317,7 +317,7 @@ class CoverLetterJobs:
                 if not repaired_forbidden:
                     repaired_forbidden = True
                     text = cover_letter_llm.forbidden_text(draft.ctx, draft.content, violation.command, violation.line)
-                    self._apply(ref, draft, self._call(draft, text, REPAIR))
+                    self._auto_repair(ref, draft, text)
                     continue
                 self._compile_failed(ref, {
                     "code": "latex_forbidden",
@@ -334,12 +334,17 @@ class CoverLetterJobs:
             if code == "latex_failed" and not repaired_failed:
                 repaired_failed = True
                 text = cover_letter_llm.repair_text(draft.ctx, draft.content, excerpt or "")
-                self._apply(ref, draft, self._call(draft, text, REPAIR))
+                self._auto_repair(ref, draft, text)
                 continue
             self._compile_failed(
                 ref, {"code": code, "params": {}, "detail": COMPILE_DETAILS.get(code, "Compiling failed")}, excerpt
             )
             return
+
+    def _auto_repair(self, ref: _Ref, draft: _Draft, text: str) -> None:
+        """One automatic repair call; the draft is `generating` again while it runs, so its text is streamed."""
+        self._write(ref, status=CoverLetterStatus.generating)
+        self._apply(ref, draft, self._call(draft, text, REPAIR))
 
     def _compiled(self, ref: _Ref, pdf: bytes) -> None:
         """Write the PDF while holding the write transaction, so a concurrent delete cannot orphan the file."""

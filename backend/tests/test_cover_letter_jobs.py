@@ -621,6 +621,49 @@ def test_stream_auto_repair_after_forbidden_command(sf, make_jobs):
     ]
 
 
+def record_status(sf, cl_id):
+    """An `on_call` hook that records the draft's DB status at the start of every LLM call."""
+    statuses = []
+    return statuses, lambda: statuses.append(load(sf, cl_id).status)
+
+
+def test_auto_repair_after_compile_failure_is_generating(sf, make_jobs):
+    """Spec 1: the automatic repair streams live, so the draft is `generating` (not `compiling`) during it."""
+    cl_id = seed(sf)
+    statuses, on_call = record_status(sf, cl_id)
+    ask = FakeAsk(answer(), answer(FIXED, "Fixed it."), on_call=on_call)
+    run(make_jobs(ask, FakeCompiler(failed(), failed())), "generate", cl_id)
+    assert statuses == [CoverLetterStatus.generating, CoverLetterStatus.generating]
+    cl = load(sf, cl_id)
+    assert cl.status == CoverLetterStatus.idle and cl.content == FIXED and cl.error["code"] == "latex_failed"
+
+
+def test_auto_repair_after_forbidden_command_is_generating(sf, make_jobs):
+    cl_id = seed(sf)
+    statuses, on_call = record_status(sf, cl_id)
+    ask = FakeAsk(answer(FORBIDDEN), answer(LETTER), on_call=on_call)
+    run(make_jobs(ask, FakeCompiler(ok())), "generate", cl_id)
+    assert statuses == [CoverLetterStatus.generating, CoverLetterStatus.generating]
+    cl = load(sf, cl_id)
+    assert cl.status == CoverLetterStatus.idle and cl.content == LETTER and cl.error is None and cl.pdf_path
+
+
+def test_auto_repair_skipped_when_draft_deleted_after_compile(sf, settings, make_jobs):
+    """The `generating` write before the repair respects `_Gone`: no LLM call, nothing written."""
+    cl_id = seed(sf)
+    ask = FakeAsk(answer(), answer(FIXED))
+
+    class DeletingCompiler(FakeCompiler):
+        def compile(self, tex):
+            with sf() as s:
+                s.delete(s.scalars(select(Application)).one())
+                s.commit()
+            return super().compile(tex)
+
+    run(make_jobs(ask, DeletingCompiler(failed())), "generate", cl_id)
+    assert len(ask.calls) == 1 and load(sf, cl_id) is None
+
+
 def test_stream_manual_repair_phase(sf, make_jobs):
     cl_id = seed(sf, content=LETTER, status=CoverLetterStatus.idle)
     with sf() as s:
