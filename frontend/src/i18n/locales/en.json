@@ -366,6 +366,8 @@
     "cover_letter_interrupted": "Interrupted by a restart. Start it again.",
     "cover_letter_nothing_to_repair": "There is no compile error to fix.",
     "template_not_found": "Template not found.",
+    "template_invalid": "This file cannot be used as a template. It must be a UTF-8 encoded .tex file of at most 200 KB that contains \\documentclass and \\end{document}.",
+    "template_builtin": "The default template cannot be renamed or deleted.",
     "internal_error": "An unexpected error occurred.",
     "unsupported_document_type": "This file type is not supported. Use PDF, PNG, JPG, WEBP, TXT or MD.",
     "llm_no_image_support": "The extraction model does not support images. Choose an image-capable configuration in the settings.",

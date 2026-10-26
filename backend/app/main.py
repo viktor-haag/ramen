@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api import (
     admin,
     applications,
+    cover_letter_templates,
     dashboard,
     details,
     feed,
@@ -132,6 +133,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(llm.router, prefix="/api")
     app.include_router(me.router, prefix="/api")
+    app.include_router(cover_letter_templates.router, prefix="/api")
     app.include_router(prompts_api.router, prefix="/api")
     app.include_router(settings_api.router, prefix="/api")
     app.include_router(version_api.router, prefix="/api")

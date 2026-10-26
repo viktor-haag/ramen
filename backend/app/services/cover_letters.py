@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.errors import ConflictError, NotFoundError
-from app.models import Application, CoverLetter, CoverLetterMessage, CoverLetterTemplate
+from app.models import Application, CoverLetter, CoverLetterMessage
 from app.models.enums import CoverLetterFormat, CoverLetterStatus, MessageRole
 from app.models.posting import utcnow
-from app.services import llm_configs, usage
+from app.services import cover_letter_templates, llm_configs, usage
 
 
 def get_for_application(session: Session, app_id: int) -> CoverLetter:
@@ -98,9 +98,9 @@ def replace(session: Session, settings: Settings, app_id: int, data: Any) -> Cov
     fmt = CoverLetterFormat(data.format)
     template = None
     if fmt == CoverLetterFormat.latex:
-        template = session.get(CoverLetterTemplate, data.template_id) if data.template_id is not None else None
-        if template is None:
-            raise NotFoundError("template_not_found", "Template not found", {"template_id": data.template_id})
+        if data.template_id is None:
+            raise NotFoundError("template_not_found", "Template not found", {"template_id": None})
+        template = cover_letter_templates.get_template(session, data.template_id)
     cl = session.scalar(select(CoverLetter).where(CoverLetter.application_id == app_id))
     if cl is None:
         if session.get(Application, app_id) is None:
