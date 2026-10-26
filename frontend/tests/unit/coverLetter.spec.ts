@@ -217,11 +217,60 @@ describe("cover letter streaming", () => {
     expect(store.streamPhase).toBe("generate");
     es.emit("end", {});
     expect(es.closed).toBe(true);
-    expect(store.streamText).toBeNull();
-    expect(store.streamPhase).toBeNull();
+    // the text stays until the final letter is there (no frame with the old draft)
+    expect(store.streamText).toBe("Dear Sir");
+    expect(store.streamPhase).toBe("generate");
     await vi.advanceTimersByTimeAsync(0);
     expect(get).toHaveBeenCalledTimes(2);
     expect(store.letter?.content).toBe("Done");
+    expect(store.streamText).toBeNull();
+    expect(store.streamPhase).toBeNull();
+    store.stopPolling();
+  });
+
+  it("after end, a still-generating reload reopens the stream", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValue(letter({ status: "generating" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    es.emit("text", { phase: "generate", text: "a", seq: 1 });
+    es.emit("end", {});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(FakeEventSource.instances).toHaveLength(2);
+    FakeEventSource.instances[1].emit("text", { phase: "revise", text: "b", seq: 1 });
+    expect(store.streamText).toBe("b");
+    store.stopPolling();
+  });
+
+  it("after end, a 404 reload clears the text", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValueOnce(letter({ status: "generating" })).mockRejectedValue(new ApiError(404, "cover_letter_not_found", {}, "x"));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    es.emit("text", { phase: "generate", text: "a", seq: 1 });
+    es.emit("end", {});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.letter).toBeNull();
+    expect(store.streamText).toBeNull();
+    store.stopPolling();
+  });
+
+  it("after end, loading another application clears the text", async () => {
+    vi.useFakeTimers();
+    let resolve8: (v: unknown) => void = () => undefined;
+    get.mockResolvedValueOnce(letter({ status: "generating" })).mockReturnValueOnce(new Promise(() => undefined) as never)
+      .mockReturnValueOnce(new Promise((r) => (resolve8 = r)) as never);
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    es.emit("text", { phase: "generate", text: "a", seq: 1 });
+    es.emit("end", {}); // its reload never answers
+    const pending = store.load(8);
+    expect(store.streamText).toBeNull();
+    resolve8(letter({ application_id: 8 }));
+    await pending;
     store.stopPolling();
   });
 

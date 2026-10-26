@@ -57,7 +57,10 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
     });
     es.addEventListener("end", () => {
       if (!live()) return;
-      closeStream();
+      // Keep the text (and sourceApp) until the reload: accept() swaps it for the final letter in one tick,
+      // so the editor never shows the old draft in between. load() of another application still clears it.
+      es.close();
+      source = undefined;
       void fetchLetter(appId, gen);
     });
     es.onerror = () => {

@@ -2,7 +2,7 @@
 import { basicSetup } from "codemirror";
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
 import { stex } from "@codemirror/legacy-modes/mode/stex";
-import { Compartment, EditorState, RangeSetBuilder, StateEffect, StateField, type Extension } from "@codemirror/state";
+import { Compartment, EditorState, RangeSetBuilder, StateEffect, StateField, Transaction, type Extension } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -161,11 +161,15 @@ function markLine(line: number | null) {
 /** Slack for the content padding below the last line. */
 const BOTTOM_SLACK = 24;
 let userScrolledUp = false;
+let lastScrollTop = 0;
 
+/** Only a scroll upwards pauses (growing content or layout shifts do not); reaching the bottom resumes. */
 function onScroll() {
   if (!view) return;
   const el = view.scrollDOM;
-  userScrolledUp = el.scrollHeight - el.scrollTop - el.clientHeight > BOTTOM_SLACK;
+  if (el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_SLACK) userScrolledUp = false;
+  else if (el.scrollTop < lastScrollTop) userScrolledUp = true;
+  lastScrollTop = el.scrollTop;
 }
 
 function scrollToEnd() {
@@ -174,11 +178,16 @@ function scrollToEnd() {
 }
 
 // Only an outside change replaces the document; the echo of our own update is equal and skipped.
+// Outside changes stay out of the undo history (undo must not walk back through streamed text), and text that
+// only grew is appended, so selection and scroll position stay where they are.
 watch(
   () => props.modelValue,
   (v) => {
-    if (!view || v === view.state.doc.toString()) return;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: v } });
+    if (!view) return;
+    const current = view.state.doc.toString();
+    if (v === current) return;
+    const changes = v.startsWith(current) ? { from: current.length, insert: v.slice(current.length) } : { from: 0, to: current.length, insert: v };
+    view.dispatch({ changes, annotations: Transaction.addToHistory.of(false) });
     markLine(props.highlightLine ?? null);
     scrollToEnd();
   },

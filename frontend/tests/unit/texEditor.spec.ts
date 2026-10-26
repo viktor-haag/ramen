@@ -1,3 +1,4 @@
+import { undo } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
@@ -132,6 +133,7 @@ describe("TexEditor", () => {
       const w = mountEditor({ modelValue: "a", disabled: true, followEnd: true });
       const view = viewOf(w);
       spy.mockClear();
+      setScroll(view.scrollDOM, { top: 800, height: 1000, client: 200 }); // at the bottom
       setScroll(view.scrollDOM, { top: 100, height: 1000, client: 200 }); // user scrolled up
       await w.setProps({ modelValue: "a\nb" });
       expect(endScrolls(spy, view)).toBe(0);
@@ -141,5 +143,40 @@ describe("TexEditor", () => {
       spy.mockRestore();
       w.unmount();
     });
+
+    it("keeps following when a scroll away from the bottom did not go up", async () => {
+      const spy = vi.spyOn(EditorView, "scrollIntoView");
+      const w = mountEditor({ modelValue: "a", disabled: true, followEnd: true });
+      const view = viewOf(w);
+      setScroll(view.scrollDOM, { top: 100, height: 1000, client: 200 });
+      setScroll(view.scrollDOM, { top: 300, height: 1000, client: 200 }); // moving down, content grew below
+      spy.mockClear();
+      await w.setProps({ modelValue: "a\nb" });
+      expect(endScrolls(spy, view)).toBe(1);
+      spy.mockRestore();
+      w.unmount();
+    });
+  });
+
+  it("outside replacements are not undoable", async () => {
+    const w = mountEditor({ modelValue: "a" });
+    const view = viewOf(w);
+    await w.setProps({ modelValue: "a b" });
+    await w.setProps({ modelValue: "a b c" });
+    undo(view);
+    expect(view.state.doc.toString()).toBe("a b c");
+    w.unmount();
+  });
+
+  it("appends only the tail when the new value extends the document", async () => {
+    const w = mountEditor({ modelValue: "Hello" });
+    const view = viewOf(w);
+    view.dispatch({ selection: { anchor: 2 } });
+    await w.setProps({ modelValue: "Hello world" });
+    expect(view.state.doc.toString()).toBe("Hello world");
+    expect(view.state.selection.main.anchor).toBe(2); // a full replacement would have moved it
+    await w.setProps({ modelValue: "Bye" });
+    expect(view.state.doc.toString()).toBe("Bye");
+    w.unmount();
   });
 });

@@ -1,3 +1,4 @@
+import { EditorView } from "@codemirror/view";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -225,11 +226,19 @@ describe("CoverLetterView", () => {
     await flushPromises();
     expect(q("[data-test=cl-stream-status]")!.textContent).toBe("Fixing the compile error…");
 
-    // stream over, the reloaded letter replaces the stream text
+    // stream over: the store clears the text in the same tick as it sets the reloaded letter
+    const cm = EditorView.findFromDOM(q("[data-test=cl-editor] .cm-editor")!)!;
+    const docs: string[] = [];
+    const dispatch = cm.dispatch.bind(cm);
+    cm.dispatch = ((...args: Parameters<EditorView["dispatch"]>) => {
+      dispatch(...args);
+      docs.push(cm.state.doc.toString());
+    }) as EditorView["dispatch"];
+    store.letter = letterOut({ status: "generating", content: "\\documentclass{article}\nFinal letter", pdf_available: false });
     store.streamText = null;
     store.streamPhase = null;
-    store.letter = letterOut({ status: "generating", content: "\\documentclass{article}\nFinal letter", pdf_available: false });
     await flushPromises();
+    expect(docs).not.toContain(letterOut().content); // never a frame with the old draft
     expect(q("[data-test=cl-stream-status]")).toBeNull();
     expect(q("[data-test=cl-editor] .cm-content")!.textContent).toContain("Final letter");
     expect(q("[data-test=cl-dirty-hint]")).toBeNull();
