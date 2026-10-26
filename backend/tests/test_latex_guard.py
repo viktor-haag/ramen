@@ -155,3 +155,19 @@ def test_environments():
     assert check(r"\begin{minipage}", None) is None
     tpl = r"\begin{tabular}{ll}"
     assert check(r"\begin{tabular}{ll}", tpl) is None
+
+
+@pytest.mark.parametrize(
+    "tex,command,line",
+    [
+        (NL.join([r"\begin", r"{filecontents*}{a}"]), "filecontents", 1),
+        (NL.join(["x", r"\begin %c", "{verbatim}"]), r"\begin{verbatim}", 2),
+    ],
+)
+@pytest.mark.parametrize("template", [None, DEFAULT_TEMPLATE])
+def test_begin_split_across_lines_blocked(tex, command, line, template):
+    assert check(tex, template) == Violation(command, line)
+
+
+def test_begin_split_across_lines_allowed_env():
+    assert check(NL.join([r"\begin", r"{itemize}"]), DEFAULT_TEMPLATE) is None

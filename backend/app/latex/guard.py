@@ -46,7 +46,8 @@ PREAMBLE_COMMANDS = {
 
 FILECONTENTS = {"filecontents", "filecontents*"}
 
-_BEGIN_RE = re.compile(r"\\begin\s*\{([^}]*)\}")
+# `\begin` and `{X}` may be separated by whitespace, newlines and %-comments.
+_BEGIN_RE = re.compile(r"\\begin(?![A-Za-z@])(?:\s|%[^\n]*)*\{([^}]*)\}")
 
 
 @dataclass(frozen=True)
@@ -147,13 +148,19 @@ def check(tex: str, template: str | None) -> Violation | None:
                     continue  # handled as statement above
                 if name in ALWAYS_FORBIDDEN or name not in allowed_words:
                     hits.append((offset + rel, "\\" + name))
-            for m in _BEGIN_RE.finditer(line):
-                env = m.group(1)
-                if env.strip() in FILECONTENTS:
-                    hits.append((offset + m.start(), "filecontents"))
-                elif env not in allowed_envs:
-                    hits.append((offset + m.start(), "\\begin{" + env + "}"))
         offset += len(line) + 1
+
+    for m in _BEGIN_RE.finditer(tex):
+        line_start = tex.rfind(chr(10), 0, m.start()) + 1
+        line_end = tex.find(chr(10), m.start())
+        first_line = tex[line_start : line_end if line_end >= 0 else len(tex)]
+        if first_line.strip() in template_lines:
+            continue
+        env = m.group(1)
+        if env.strip() in FILECONTENTS:
+            hits.append((m.start(), "filecontents"))
+        elif env not in allowed_envs:
+            hits.append((m.start(), "\\begin{" + env + "}"))
 
     if not hits:
         return None
