@@ -60,33 +60,41 @@ class AnthropicClient:
             http_client=http_client,
         )
 
-    def complete(self, system, messages: list[Message], *, json_schema=None, max_tokens=4096) -> LLMResult:
-        """json_schema is only a prompt instruction here; callers validate the output locally."""
+    def _params(self, system: str, messages: list[Message], max_tokens: int) -> dict:
+        """Request parameters shared by `complete` and `stream`."""
         cfg = self._cfg
-        if json_schema is not None:
-            system = f"{system}\n\n{SCHEMA_INSTRUCTION}{json.dumps(json_schema)}".strip()
-        kwargs: dict = {}
+        params: dict = {}
         thinking = getattr(cfg.thinking, "value", cfg.thinking)
         if thinking and thinking != "off":
-            kwargs["thinking"] = {"type": "adaptive"}
-            kwargs["output_config"] = {"effort": thinking}
+            params["thinking"] = {"type": "adaptive"}
+            params["output_config"] = {"effort": thinking}
             max_tokens = max(max_tokens, THINKING_MIN_MAX_TOKENS)
         if system:
-            kwargs["system"] = system
+            params["system"] = system
+        return {
+            "model": cfg.model,
+            "max_tokens": max_tokens,
+            "messages": [{"role": m.role, "content": [_part(p) for p in m.parts]} for m in messages],
+            "extra_headers": cfg.extra_headers or None,
+            "extra_body": cfg.extra_body or None,
+            **params,
+        }
+
+    def _sdk(self, fn):
+        """Run one SDK step, translating its errors (raised outside `except`, so nothing is chained)."""
         err: LLMError | None = None
         try:
-            resp = self._client.messages.create(
-                model=cfg.model,
-                max_tokens=max_tokens,
-                messages=[{"role": m.role, "content": [_part(p) for p in m.parts]} for m in messages],
-                extra_headers=cfg.extra_headers or None,
-                extra_body=cfg.extra_body or None,
-                **kwargs,
-            )
-        except (anthropic.AnthropicError, ValueError) as exc:  # anything else is a bug and propagates
-            err = map_sdk_error(exc, cfg.api_key)
-        if err is not None:
-            raise err
+            return fn()
+        except (anthropic.AnthropicError, httpx2.TransportError, ValueError) as exc:  # anything else is a bug
+            err = map_sdk_error(exc, self._cfg.api_key)
+        raise err
+
+    def complete(self, system, messages: list[Message], *, json_schema=None, max_tokens=4096) -> LLMResult:
+        """json_schema is only a prompt instruction here; callers validate the output locally."""
+        if json_schema is not None:
+            system = f"{system}\n\n{SCHEMA_INSTRUCTION}{json.dumps(json_schema)}".strip()
+        params = self._params(system, messages, max_tokens)
+        resp = self._sdk(lambda: self._client.messages.create(**params))
         text = _extract_text(resp)
         if text is None:
             raise LLMError("llm_invalid_output", "The model returned no usable text content.")
@@ -95,10 +103,24 @@ class AnthropicClient:
             getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None), system, messages, text
         )
 
+    def stream(self, system, messages: list[Message], *, max_tokens=4096, on_text) -> LLMResult:
+        params = self._params(system, messages, max_tokens)
+        pieces: list[str] = []
+        with self._sdk(lambda: self._client.messages.stream(**params).__enter__()) as s:
+            events = iter(s)
+            while (event := self._sdk(lambda: next(events, None))) is not None:
+                # Only text deltas; thinking/signature deltas and the SDK's derived events are skipped.
+                if event.type == "content_block_delta" and event.delta.type == "text_delta":
+                    pieces.append(event.delta.text)
+                    on_text(event.delta.text)  # outside _sdk: a callback error is a bug and propagates
+            final = self._sdk(s.get_final_message)
+        text = "".join(pieces).strip()
+        if not text:
+            raise LLMError("llm_invalid_output", "The model returned no usable text content.")
+        usage = getattr(final, "usage", None)
+        return resolve_usage(
+            getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None), system, messages, text
+        )
+
     def list_models(self) -> list[str]:
-        err: LLMError | None = None
-        try:
-            return [m.id for m in self._client.models.list()]
-        except (anthropic.AnthropicError, ValueError) as exc:
-            err = map_sdk_error(exc, self._cfg.api_key)
-        raise err
+        return self._sdk(lambda: [m.id for m in self._client.models.list()])

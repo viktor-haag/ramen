@@ -1,4 +1,5 @@
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -32,6 +33,18 @@ class LLMClient(Protocol):
         json_schema: dict | None = None,
         max_tokens: int = 4096,
     ) -> LLMResult: ...
+
+    def stream(
+        self,
+        system: str,
+        messages: list[Message],
+        *,
+        max_tokens: int = 4096,
+        on_text: Callable[[str], None],
+    ) -> LLMResult:
+        """Like `complete` (plain text only, no json_schema), calling `on_text` with every text piece
+        as it arrives. Exceptions raised by `on_text` propagate unchanged."""
+        ...
 
     def list_models(self) -> list[str]: ...
 

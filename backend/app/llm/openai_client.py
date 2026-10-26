@@ -47,6 +47,18 @@ def _extract_text(resp) -> str | None:
         return None
 
 
+def _delta_text(chunk) -> str | None:
+    """Text of a chat.completion.chunk, or None (usage-only chunk, role/finish chunk, odd shape)."""
+    try:
+        choices = chunk.choices
+        if not choices:
+            return None
+        content = choices[0].delta.content
+        return content if isinstance(content, str) else None
+    except (AttributeError, TypeError, IndexError):
+        return None
+
+
 class OpenAIClient:
     def __init__(self, cfg, *, http_client: httpx2.Client | None = None):
         provider = getattr(cfg.provider, "value", cfg.provider)
@@ -69,44 +81,53 @@ class OpenAIClient:
         self._client.organization = None
         self._client.project = None
 
+    def _params(self, system: str, messages: list[Message], max_tokens: int) -> dict:
+        """Request parameters shared by `complete` and `stream`."""
+        cfg = self._cfg
+        params: dict = {}
+        thinking = getattr(cfg.thinking, "value", cfg.thinking)
+        if self._official:
+            if thinking and thinking != "off":
+                params["reasoning_effort"] = thinking
+                max_tokens = max(max_tokens, THINKING_MIN_MAX_TOKENS)
+            params["max_completion_tokens"] = max_tokens
+        else:
+            params["max_tokens"] = max_tokens
+        msgs: list[dict] = []
+        if system:
+            msgs.append({"role": "system", "content": system})
+        msgs += [{"role": m.role, "content": _content(m.parts)} for m in messages]
+        return {
+            "model": cfg.model,
+            "messages": msgs,
+            "extra_headers": cfg.extra_headers or None,
+            "extra_body": cfg.extra_body or None,
+            **params,
+        }
+
+    def _sdk(self, fn):
+        """Run one SDK step, translating its errors (raised outside `except`, so nothing is chained)."""
+        err: LLMError | None = None
+        try:
+            return fn()
+        except (openai.OpenAIError, httpx2.TransportError, ValueError) as exc:  # anything else is a bug
+            err = map_sdk_error(exc, self._cfg.api_key)
+        raise err
+
     def complete(self, system, messages: list[Message], *, json_schema=None, max_tokens=4096) -> LLMResult:
         """For provider `openai` json_schema is sent with strict=True: callers must pass a
         strict-compatible schema (additionalProperties false, all properties required)."""
-        cfg = self._cfg
-        kwargs: dict = {}
+        schema_params: dict = {}
         if json_schema is not None:
             if self._official:
-                kwargs["response_format"] = {
+                schema_params["response_format"] = {
                     "type": "json_schema",
                     "json_schema": {"name": "result", "schema": json_schema, "strict": True},
                 }
             else:
                 system = f"{system}\n\n{SCHEMA_INSTRUCTION}{json.dumps(json_schema)}".strip()
-        thinking = getattr(cfg.thinking, "value", cfg.thinking)
-        if self._official:
-            if thinking and thinking != "off":
-                kwargs["reasoning_effort"] = thinking
-                max_tokens = max(max_tokens, THINKING_MIN_MAX_TOKENS)
-            kwargs["max_completion_tokens"] = max_tokens
-        else:
-            kwargs["max_tokens"] = max_tokens
-        msgs: list[dict] = []
-        if system:
-            msgs.append({"role": "system", "content": system})
-        msgs += [{"role": m.role, "content": _content(m.parts)} for m in messages]
-        err: LLMError | None = None
-        try:
-            resp = self._client.chat.completions.create(
-                model=cfg.model,
-                messages=msgs,
-                extra_headers=cfg.extra_headers or None,
-                extra_body=cfg.extra_body or None,
-                **kwargs,
-            )
-        except (openai.OpenAIError, ValueError) as exc:  # anything else is a bug and propagates
-            err = map_sdk_error(exc, cfg.api_key)
-        if err is not None:
-            raise err
+        params = self._params(system, messages, max_tokens)
+        resp = self._sdk(lambda: self._client.chat.completions.create(**params, **schema_params))
         text = _extract_text(resp)
         if text is None:
             raise LLMError("llm_invalid_output", "The model returned no usable text content.")
@@ -115,10 +136,27 @@ class OpenAIClient:
             getattr(usage, "prompt_tokens", None), getattr(usage, "completion_tokens", None), system, messages, text
         )
 
+    def stream(self, system, messages: list[Message], *, max_tokens=4096, on_text) -> LLMResult:
+        params = self._params(system, messages, max_tokens)
+        pieces: list[str] = []
+        usage = None
+        chunks = self._sdk(lambda: self._client.chat.completions.create(
+            **params, stream=True, stream_options={"include_usage": True}
+        ))
+        with chunks:
+            it = iter(chunks)
+            while (chunk := self._sdk(lambda: next(it, None))) is not None:
+                usage = getattr(chunk, "usage", None) or usage  # final chunk (choices == []) when supported
+                piece = _delta_text(chunk)
+                if piece:
+                    pieces.append(piece)
+                    on_text(piece)  # outside _sdk: a callback error is a bug and propagates
+        text = "".join(pieces).strip()
+        if not text:
+            raise LLMError("llm_invalid_output", "The model returned no usable text content.")
+        return resolve_usage(
+            getattr(usage, "prompt_tokens", None), getattr(usage, "completion_tokens", None), system, messages, text
+        )
+
     def list_models(self) -> list[str]:
-        err: LLMError | None = None
-        try:
-            return [m.id for m in self._client.models.list()]
-        except (openai.OpenAIError, ValueError) as exc:
-            err = map_sdk_error(exc, self._cfg.api_key)
-        raise err
+        return self._sdk(lambda: [m.id for m in self._client.models.list()])
