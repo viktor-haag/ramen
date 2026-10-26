@@ -4,8 +4,12 @@ One worker thread runs the jobs. Every job reads its data in a short session, ca
 compiler without a session, and writes the result in another short session. If the draft disappeared
 meanwhile (application deleted, or its id reused by a newer draft), nothing is written and no PDF file is
 left behind. Every error ends up in `error` as `{code, params, detail}`; `status` always ends `idle`.
+
+While a job's LLM call runs, its visible text is kept in an in-memory stream buffer (never in the database)
+that request threads read via `stream_snapshot`; the buffer is dropped when the job ends.
 """
 import logging
+import itertools
 import threading
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, wait
@@ -25,6 +29,7 @@ from app.models.posting import utcnow
 from app.services import cover_letter_llm
 from app.services.cover_letter_llm import Answer, Context
 from app.services.cover_letters import pdf_file, remove_pdf
+from app.services.stream_filter import StreamFilter
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +42,7 @@ COMPILE_DETAILS = {
 }
 MISSING_PREFIX = "Not available anymore: "
 REPAIRABLE = ("latex_failed", "latex_forbidden")
+GENERATE, REVISE, REPAIR = "generate", "revise", "repair"  # stream phases
 
 
 class _Gone(Exception):
@@ -54,6 +60,24 @@ class _Ref:
     created_at: datetime
 
 
+@dataclass(frozen=True)
+class StreamSnapshot:
+    """What a running job's LLM call has produced so far (visible letter text only)."""
+
+    phase: str  # generate | revise | repair
+    text: str
+    seq: int  # rises with every change of phase/text
+
+
+class _Stream:
+    """Mutable stream buffer of one job; only touched under `CoverLetterJobs._stream_lock`."""
+
+    def __init__(self) -> None:
+        self.filter = StreamFilter()
+        self.phase = GENERATE
+        self.seq = 0
+
+
 @dataclass
 class _Draft:
     """What a job needs from the draft, read in a short session."""
@@ -65,6 +89,7 @@ class _Draft:
     compile_log: str | None
     ctx: Context | None = None
     system: str | None = None
+    ref: _Ref | None = None
 
 
 class CoverLetterJobs:
@@ -83,6 +108,12 @@ class CoverLetterJobs:
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cover-letter")
         self._lock = threading.Lock()
         self._futures: set[Future] = set()
+        # Stream buffers keyed by (id, created_at): written by the worker, read by request threads (SSE).
+        # `seq` comes from one counter shared by all buffers, so it never repeats or goes back: not on an
+        # attempt reset, and not when a newer job for the same draft starts a new buffer.
+        self._stream_lock = threading.Lock()
+        self._streams: dict[tuple[int, datetime], _Stream] = {}
+        self._seq = itertools.count(1)
 
     # --- public API: each starts one job and returns immediately ------------------------------------
     # `created_at` is the draft's `created_at` at submit time: if the row with `cl_id` has another one when
@@ -103,6 +134,14 @@ class CoverLetterJobs:
     def compile_only(self, cl_id: int, *, created_at: datetime) -> None:
         """After a manual edit: compile the current content, no repair."""
         self._submit(self._compile_only, _Ref(cl_id, created_at))
+
+    def stream_snapshot(self, cl_id: int, created_at: datetime) -> StreamSnapshot | None:
+        """The running job's streamed text for this draft, or None (no LLM call running for it). Thread-safe."""
+        with self._stream_lock:
+            stream = self._streams.get((cl_id, created_at))
+            if stream is None:
+                return None
+            return StreamSnapshot(stream.phase, stream.filter.visible, stream.seq)
 
     def recover(self, session: Session) -> int:
         """At start: drafts left `generating`/`compiling` become idle with `cover_letter_interrupted` (caller commits)."""
@@ -150,6 +189,9 @@ class CoverLetterJobs:
         except Exception:
             log.exception("cover letter job for %s failed", ref.id)
             self._fail(ref, dict(INTERNAL))
+        finally:
+            with self._stream_lock:
+                self._streams.pop((ref.id, ref.created_at), None)
 
     def _fail(self, ref: _Ref, error: dict) -> None:
         try:
@@ -171,13 +213,13 @@ class CoverLetterJobs:
     def _generate(self, ref: _Ref) -> None:
         draft = self._load(ref, CoverLetterStatus.generating, with_context=True)
         template = draft.template_content if draft.fmt == CoverLetterFormat.latex else None
-        answer = self._call(draft, cover_letter_llm.generate_text(draft.ctx, template))
+        answer = self._call(draft, cover_letter_llm.generate_text(draft.ctx, template), GENERATE)
         self._apply(ref, draft, answer, hint=True)
         self._finish(ref, draft, auto_repair=True)
 
     def _revise(self, ref: _Ref, instruction: str) -> None:
         draft = self._load(ref, CoverLetterStatus.generating, with_context=True)
-        answer = self._call(draft, cover_letter_llm.revise_text(draft.ctx, draft.content, instruction))
+        answer = self._call(draft, cover_letter_llm.revise_text(draft.ctx, draft.content, instruction), REVISE)
         self._apply(ref, draft, answer, hint=True)
         self._finish(ref, draft, auto_repair=True)
 
@@ -192,7 +234,7 @@ class CoverLetterJobs:
             text = cover_letter_llm.forbidden_text(draft.ctx, draft.content, params["command"], params.get("line", 0))
         else:
             text = cover_letter_llm.repair_text(draft.ctx, draft.content, draft.compile_log or "")
-        answer = self._call(draft, text)
+        answer = self._call(draft, text, REPAIR)
         self._apply(ref, draft, answer, hint=True)
         self._finish(ref, draft, auto_repair=False)
 
@@ -206,7 +248,7 @@ class CoverLetterJobs:
         """Snapshot the draft and mark it busy; optionally build the LLM context."""
         with self._session_factory() as session:
             cl = self._get(session, ref)
-            draft = _Draft(cl.format.value, cl.template_content, cl.content, cl.error, cl.compile_log)
+            draft = _Draft(cl.format.value, cl.template_content, cl.content, cl.error, cl.compile_log, ref=ref)
             cl.status = status
             session.commit()
         if with_context:
@@ -219,9 +261,31 @@ class CoverLetterJobs:
             draft.ctx = cover_letter_llm.build_context(session, cl.application, cl.context or {})
             draft.system = cover_letter_llm.system(session, draft.fmt, cl.language.value)
 
-    def _call(self, draft: _Draft, user_text: str) -> Answer:
+    def _call(self, draft: _Draft, user_text: str, phase: str) -> Answer:
+        """One LLM call (plus its correction retry) whose visible text goes to the job's stream buffer."""
+        key = (draft.ref.id, draft.ref.created_at)
+
+        def on_attempt() -> None:  # every attempt starts from an empty text
+            with self._stream_lock:
+                stream = self._streams.setdefault(key, _Stream())
+                stream.filter.reset()
+                stream.phase = phase
+                stream.seq = next(self._seq)
+
+        def on_text(chunk: str) -> None:
+            with self._stream_lock:
+                stream = self._streams.get(key)
+                if stream is None:
+                    return
+                before = stream.filter.visible
+                stream.filter.feed(chunk)
+                if stream.filter.visible != before:
+                    stream.seq = next(self._seq)
+
         # `limit_exceeded` is ignored: the router checks the limit before each job
-        return self._ask(self._session_factory, draft.system, user_text, draft.fmt)
+        return self._ask(
+            self._session_factory, draft.system, user_text, draft.fmt, on_text=on_text, on_attempt=on_attempt
+        )
 
     def _apply(self, ref: _Ref, draft: _Draft, answer: Answer, *, hint: bool = False) -> None:
         """Store the new content and the note; the old PDF, error and compile log no longer match it."""
@@ -253,7 +317,7 @@ class CoverLetterJobs:
                 if not repaired_forbidden:
                     repaired_forbidden = True
                     text = cover_letter_llm.forbidden_text(draft.ctx, draft.content, violation.command, violation.line)
-                    self._apply(ref, draft, self._call(draft, text))
+                    self._apply(ref, draft, self._call(draft, text, REPAIR))
                     continue
                 self._compile_failed(ref, {
                     "code": "latex_forbidden",
@@ -270,7 +334,7 @@ class CoverLetterJobs:
             if code == "latex_failed" and not repaired_failed:
                 repaired_failed = True
                 text = cover_letter_llm.repair_text(draft.ctx, draft.content, excerpt or "")
-                self._apply(ref, draft, self._call(draft, text))
+                self._apply(ref, draft, self._call(draft, text, REPAIR))
                 continue
             self._compile_failed(
                 ref, {"code": code, "params": {}, "detail": COMPILE_DETAILS.get(code, "Compiling failed")}, excerpt

@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.cover_letters import jobs as jobs_module
-from app.cover_letters.jobs import CoverLetterJobs
+from app.cover_letters.jobs import CoverLetterJobs, StreamSnapshot
 from app.errors import ConflictError, NotFoundError, UpstreamError
 from app.latex.compiler import CompileResult
 from app.main import create_app
@@ -41,22 +41,49 @@ PDF = b"%PDF-1.5 fake"
 FAIL_LOG = "This is TeX\n! Undefined control sequence.\nl.3 \\foo\nmore\nmore2\nunrelated tail"
 
 
+class Streamed:
+    """A scripted streamed answer: one list of chunks per LLM attempt (a second list = correction retry),
+    then `result` (an Answer, or an exception to raise)."""
+
+    def __init__(self, *attempts: list[str], result):
+        self.attempts = attempts
+        self.result = result
+
+
 class FakeAsk:
-    """Returns the scripted answers (an Answer, or an exception to raise) in order; records every call."""
+    """Returns the scripted answers (an Answer, a `Streamed`, or an exception to raise) in order; records
+    every call. Like the real `ask`, it calls `on_attempt()` before each attempt; `observe()` (set by a test)
+    runs after every attempt start and every chunk."""
 
     def __init__(self, *items, on_call=None):
         self.items = list(items)
         self.calls: list[tuple[str, str, str]] = []
         self.on_call = on_call
+        self.observe = None
 
-    def __call__(self, session_factory, system, user_text, fmt):
+    def __call__(self, session_factory, system, user_text, fmt, *, on_text=None, on_attempt=None):
         self.calls.append((system, user_text, fmt))
         if self.on_call:
             self.on_call()
         item = self.items.pop(0)
+        attempts = item.attempts if isinstance(item, Streamed) else [[]]
+        for chunks in attempts:
+            if on_attempt:
+                on_attempt()
+            self._observe()
+            for chunk in chunks:
+                if on_text:
+                    on_text(chunk)
+                self._observe()
+        if isinstance(item, Streamed):
+            item = item.result
         if isinstance(item, Exception):
             raise item
         return item
+
+    def _observe(self):
+        if self.observe:
+            self.observe()
 
 
 class FakeCompiler:
@@ -505,6 +532,156 @@ def test_jobs_expose_compiler(sf, settings):
         assert jobs.compiler is compiler
     finally:
         jobs.shutdown()
+
+
+# --- stream buffer -------------------------------------------------------------------------------
+
+
+def watch(sf, jobs, ask, cl_id, *, at=None) -> list:
+    """Record `stream_snapshot` (for the job's identity, or `at`) after every attempt start and chunk."""
+    ca = at or created_at(sf, cl_id)
+    snaps = []
+    ask.observe = lambda: snaps.append(jobs.stream_snapshot(cl_id, ca))
+    return snaps
+
+
+def after(sf, jobs, cl_id):
+    return jobs.stream_snapshot(cl_id, created_at(sf, cl_id))
+
+
+def assert_rising(snaps):
+    seqs = [s.seq for s in snaps]
+    assert seqs == sorted(seqs) and len(set(seqs)) == len(seqs), seqs
+
+
+def test_stream_snapshot_grows_during_generate(sf, make_jobs):
+    cl_id = seed(sf, fmt=CoverLetterFormat.text)
+    ask = FakeAsk(Streamed(["Dear ", "team,\n", "hello."], result=answer("Dear team,\nhello.")))
+    jobs = make_jobs(ask)
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "generate", cl_id)
+    assert all(isinstance(s, StreamSnapshot) and s.phase == "generate" for s in snaps)
+    assert [s.text for s in snaps] == ["", "Dear", "Dear team,", "Dear team,\nhello."]
+    assert_rising(snaps)
+    assert after(sf, jobs, cl_id) is None  # deleted once the job ended
+    assert load(sf, cl_id).content == "Dear team,\nhello."
+
+
+def test_stream_seq_unchanged_when_visible_text_is_unchanged(sf, make_jobs):
+    cl_id = seed(sf, fmt=CoverLetterFormat.text)
+    ask = FakeAsk(Streamed(["Dear team.", "\n<<<RAMEN-NOTE>>>\n", "A note."], result=answer("Dear team.")))
+    jobs = make_jobs(ask)
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "generate", cl_id)
+    assert [s.text for s in snaps] == ["", "Dear team.", "Dear team.", "Dear team."]
+    assert snaps[1].seq == snaps[2].seq == snaps[3].seq
+
+
+def test_stream_snapshot_is_immutable(sf, make_jobs):
+    cl_id = seed(sf, fmt=CoverLetterFormat.text)
+    ask = FakeAsk(Streamed(["Dear"], result=answer("Dear")))
+    jobs = make_jobs(ask)
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "generate", cl_id)
+    with pytest.raises(AttributeError):
+        snaps[0].text = "x"
+
+
+def test_stream_phase_revise(sf, make_jobs):
+    cl_id = seed(sf, fmt=CoverLetterFormat.text, content="Old", status=CoverLetterStatus.idle)
+    ask = FakeAsk(Streamed(["Shorter."], result=answer("Shorter.")))
+    jobs = make_jobs(ask)
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "revise", cl_id, "Make it shorter")
+    assert [(s.phase, s.text) for s in snaps] == [("revise", ""), ("revise", "Shorter.")]
+    assert after(sf, jobs, cl_id) is None
+
+
+def test_stream_auto_repair_after_compile_failure(sf, make_jobs):
+    cl_id = seed(sf)
+    ask = FakeAsk(Streamed(["First"], result=answer()), Streamed(["Fixed"], result=answer(FIXED)))
+    jobs = make_jobs(ask, FakeCompiler(failed(), ok()))
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "generate", cl_id)
+    assert [(s.phase, s.text) for s in snaps] == [
+        ("generate", ""), ("generate", "First"), ("repair", ""), ("repair", "Fixed"),
+    ]
+    assert_rising(snaps)  # the reset is a change, too
+    assert after(sf, jobs, cl_id) is None
+
+
+def test_stream_auto_repair_after_forbidden_command(sf, make_jobs):
+    cl_id = seed(sf)
+    ask = FakeAsk(Streamed(["First"], result=answer(FORBIDDEN)), Streamed(["Fixed"], result=answer(LETTER)))
+    jobs = make_jobs(ask, FakeCompiler(ok()))
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "revise", cl_id, "x")
+    assert [(s.phase, s.text) for s in snaps] == [
+        ("revise", ""), ("revise", "First"), ("repair", ""), ("repair", "Fixed"),
+    ]
+
+
+def test_stream_manual_repair_phase(sf, make_jobs):
+    cl_id = seed(sf, content=LETTER, status=CoverLetterStatus.idle)
+    with sf() as s:
+        s.get(CoverLetter, cl_id).error = {"code": "latex_failed", "params": {}, "detail": "x"}
+        s.commit()
+    ask = FakeAsk(Streamed(["Fixed"], result=answer(FIXED)))
+    jobs = make_jobs(ask, FakeCompiler(ok()))
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "repair", cl_id)
+    assert [(s.phase, s.text) for s in snaps] == [("repair", ""), ("repair", "Fixed")]
+
+
+def test_stream_correction_retry_resets_text(sf, make_jobs):
+    cl_id = seed(sf, fmt=CoverLetterFormat.text)
+    ask = FakeAsk(Streamed(["Broken"], ["Good"], result=answer("Good")))
+    jobs = make_jobs(ask)
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "generate", cl_id)
+    assert [(s.phase, s.text) for s in snaps] == [
+        ("generate", ""), ("generate", "Broken"), ("generate", ""), ("generate", "Good"),
+    ]
+    assert_rising(snaps)
+
+
+def test_stream_deleted_after_llm_error_mid_stream(sf, make_jobs):
+    cl_id = seed(sf, content=LETTER, status=CoverLetterStatus.idle)
+    ask = FakeAsk(Streamed(["Partial"], result=UpstreamError("llm_timeout", "slow", {})))
+    jobs = make_jobs(ask, FakeCompiler())
+    snaps = watch(sf, jobs, ask, cl_id)
+    run(jobs, "revise", cl_id, "x")
+    assert snaps[-1].text == "Partial"
+    assert after(sf, jobs, cl_id) is None
+    cl = load(sf, cl_id)
+    assert cl.content == LETTER and cl.error["code"] == "llm_timeout"  # the partial text is never stored
+
+
+def test_stream_deleted_after_gone(sf, make_jobs):
+    cl_id = seed(sf)
+    ca = created_at(sf, cl_id)
+
+    def delete_application():
+        with sf() as s:
+            s.delete(s.scalars(select(Application)).one())
+            s.commit()
+
+    ask = FakeAsk(Streamed(["Dear"], result=answer()), on_call=delete_application)
+    jobs = make_jobs(ask, FakeCompiler(ok()))
+    snaps = watch(sf, jobs, ask, cl_id, at=ca)
+    run(jobs, "generate", cl_id)
+    assert snaps[-1].text == "Dear" and load(sf, cl_id) is None
+    assert jobs.stream_snapshot(cl_id, ca) is None
+
+
+def test_stream_snapshot_wrong_created_at_is_none(sf, make_jobs):
+    cl_id = seed(sf, fmt=CoverLetterFormat.text)
+    ask = FakeAsk(Streamed(["Dear"], result=answer("Dear")))
+    jobs = make_jobs(ask)
+    snaps = watch(sf, jobs, ask, cl_id, at=datetime(2020, 1, 1, tzinfo=UTC))
+    run(jobs, "generate", cl_id)
+    assert snaps == [None, None]
+    assert jobs.stream_snapshot(9999, created_at(sf, cl_id)) is None
 
 
 # --- service -------------------------------------------------------------------------------------
