@@ -48,7 +48,7 @@ def map_sdk_error(exc: Exception, api_key: str | None = None) -> LLMError:
         return LLMError("llm_invalid_output", message)
     status = getattr(exc, "status_code", None)
     if isinstance(status, int):
-        if status < 400:  # error event mid-stream, e.g. Anthropic `overloaded_error`
+        if 200 <= status < 300:  # error event inside a started stream, e.g. Anthropic `overloaded_error`
             code = _STREAM_ERROR_TYPES.get(_error_type(getattr(exc, "body", None)), "llm_unavailable")
             return LLMError(code, message)
         if status in (401, 403):

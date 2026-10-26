@@ -432,6 +432,15 @@ def test_response_validation_error_is_invalid_output(provider):
     assert map_sdk_error(exc, KEY).code == "llm_invalid_output"
 
 
+def test_3xx_status_error_is_bad_request():
+    import anthropic
+
+    from app.llm.errors import map_sdk_error
+
+    resp = httpx2.Response(302, request=httpx2.Request("POST", "https://x.test"))
+    assert map_sdk_error(anthropic.APIStatusError("moved", response=resp, body=None), KEY).code == "llm_bad_request"
+
+
 @pytest.mark.parametrize("provider,ok", PROVIDERS)
 def test_env_does_not_override_config(provider, ok, monkeypatch):
     for k in ("ANTHROPIC_BASE_URL", "OPENAI_BASE_URL"):
