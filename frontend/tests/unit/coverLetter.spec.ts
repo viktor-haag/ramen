@@ -155,6 +155,127 @@ describe("cover letter store", () => {
   });
 });
 
+class FakeEventSource {
+  static instances: FakeEventSource[] = [];
+  onerror: (() => void) | null = null;
+  closed = false;
+  private handlers: Record<string, ((e: MessageEvent) => void)[]> = {};
+  constructor(public url: string) {
+    FakeEventSource.instances.push(this);
+  }
+  addEventListener(type: string, cb: (e: MessageEvent) => void) {
+    (this.handlers[type] ??= []).push(cb);
+  }
+  close() {
+    this.closed = true;
+  }
+  emit(type: string, data: unknown) {
+    for (const cb of this.handlers[type] ?? []) cb({ data: JSON.stringify(data) } as MessageEvent);
+  }
+  fail() {
+    this.onerror?.();
+  }
+}
+
+describe("cover letter streaming", () => {
+  const original = (globalThis as { EventSource?: unknown }).EventSource;
+  beforeEach(() => {
+    FakeEventSource.instances = [];
+    (globalThis as { EventSource?: unknown }).EventSource = FakeEventSource;
+  });
+  afterEach(() => {
+    (globalThis as { EventSource?: unknown }).EventSource = original;
+  });
+
+  it("opens exactly one EventSource while generating", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValue(letter({ status: "generating" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    await store.load(7);
+    expect(FakeEventSource.instances).toHaveLength(1);
+    expect(FakeEventSource.instances[0].url).toBe("/api/applications/7/cover-letter/stream");
+    store.stopPolling();
+  });
+
+  it("does not open a stream for an idle letter", async () => {
+    get.mockResolvedValue(letter());
+    await useCoverLetterStore().load(7);
+    expect(FakeEventSource.instances).toHaveLength(0);
+  });
+
+  it("sets text and phase; end closes, clears and reloads", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValueOnce(letter({ status: "generating" })).mockResolvedValue(letter({ content: "Done" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    es.emit("text", { phase: "generate", text: "Dear Sir", seq: 1 });
+    expect(store.streamText).toBe("Dear Sir");
+    expect(store.streamPhase).toBe("generate");
+    es.emit("end", {});
+    expect(es.closed).toBe(true);
+    expect(store.streamText).toBeNull();
+    expect(store.streamPhase).toBeNull();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(store.letter?.content).toBe("Done");
+    store.stopPolling();
+  });
+
+  it("falls back to polling when the stream errors before any text", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValue(letter({ status: "generating" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    es.fail();
+    expect(es.closed).toBe(true);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(FakeEventSource.instances).toHaveLength(1);
+    store.stopPolling();
+  });
+
+  it("tolerates one error after text, closes on the second", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValue(letter({ status: "generating" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    es.emit("text", { phase: "generate", text: "a", seq: 1 });
+    es.fail();
+    expect(es.closed).toBe(false);
+    es.fail();
+    expect(es.closed).toBe(true);
+    store.stopPolling();
+  });
+
+  it("stopPolling closes the stream and clears the text", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValue(letter({ status: "generating" }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    es.emit("text", { phase: "revise", text: "a", seq: 1 });
+    store.stopPolling();
+    expect(es.closed).toBe(true);
+    expect(store.streamText).toBeNull();
+  });
+
+  it("ignores late events of application A after load(B)", async () => {
+    vi.useFakeTimers();
+    get.mockResolvedValueOnce(letter({ status: "generating" })).mockResolvedValue(letter({ application_id: 8 }));
+    const store = useCoverLetterStore();
+    await store.load(7);
+    const es = FakeEventSource.instances[0];
+    await store.load(8);
+    es.emit("text", { phase: "generate", text: "late", seq: 2 });
+    expect(es.closed).toBe(true);
+    expect(store.streamText).toBeNull();
+  });
+});
+
 describe("cover letter templates store", () => {
   const tpl = (id: number, name = `T${id}`): CoverLetterTemplate => ({ id, name, builtin: false, created_at: "2026-01-01T00:00:00Z" });
 

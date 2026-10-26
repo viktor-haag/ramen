@@ -473,6 +473,8 @@ export interface PromptOut {
 
 export type CoverLetterFormat = "latex" | "text";
 export type CoverLetterLanguage = "posting" | "de" | "en";
+/** Phase of a running cover letter job, as reported by the stream endpoint. */
+export type StreamPhase = "generate" | "revise" | "repair";
 export type CoverLetterStatus = "idle" | "generating" | "compiling";
 
 export interface CoverLetterContext {

@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { ApiError, api, BASE, toQuery } from "@/api/client";
-import type { CoverLetterIn, CoverLetterOut } from "@/api/types";
+import type { CoverLetterIn, CoverLetterOut, StreamPhase } from "@/api/types";
 import { useNotifyStore } from "@/stores/notify";
 
 const POLL_MS = 2000;
@@ -18,6 +18,67 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   // Request generation: bumped by stopPolling() and load(); responses from an older generation are dropped.
   let gen = 0;
+  // Live draft text of a running job; polling stays on as a safety net, the stream only supplies text.
+  const streamText = ref<string | null>(null);
+  const streamPhase = ref<StreamPhase | null>(null);
+  let source: EventSource | undefined;
+  let sourceApp: number | undefined;
+  let streamGaveUp = false; // stream failed: do not reopen until the job is over or another application loads
+
+  function closeStream() {
+    source?.close();
+    source = undefined;
+    sourceApp = undefined;
+    streamText.value = null;
+    streamPhase.value = null;
+  }
+
+  function openStream(appId: number, g: number) {
+    if (source && sourceApp === appId) return;
+    if (streamGaveUp || typeof EventSource === "undefined") return;
+    closeStream();
+    const es = new EventSource(`${BASE}/applications/${appId}/cover-letter/stream`);
+    source = es;
+    sourceApp = appId;
+    let gotText = false;
+    let errors = 0;
+    // Events of a replaced or closed source (or an older generation) are dropped.
+    const live = () => source === es && g <= gen;
+    es.addEventListener("text", (e) => {
+      if (!live()) return;
+      try {
+        const data = JSON.parse((e as MessageEvent).data) as { phase: StreamPhase; text: string };
+        streamText.value = data.text;
+        streamPhase.value = data.phase;
+        gotText = true;
+      } catch {
+        // malformed event: ignore, polling still delivers the final letter
+      }
+    });
+    es.addEventListener("end", () => {
+      if (!live()) return;
+      closeStream();
+      void fetchLetter(appId, gen);
+    });
+    es.onerror = () => {
+      if (!live()) return;
+      errors++;
+      if (!gotText || errors > 1) {
+        streamGaveUp = true;
+        closeStream();
+      }
+    };
+  }
+
+  /** Accept a fresh letter and keep the stream in line with its status. */
+  function accept(next: CoverLetterOut, g: number) {
+    letter.value = next;
+    if (next.status === "generating") openStream(next.application_id, g);
+    else {
+      streamGaveUp = false;
+      closeStream();
+    }
+  }
 
   function clearTimer() {
     if (timer !== undefined) clearTimeout(timer);
@@ -27,6 +88,8 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
   function stopPolling() {
     gen++;
     clearTimer();
+    closeStream();
+    streamGaveUp = false;
     loading.value = false;
   }
 
@@ -52,13 +115,17 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
       return;
     }
     if (g !== gen || next.application_id !== appId) return;
-    letter.value = next;
+    accept(next, g);
     schedule(appId);
   }
 
   async function load(appId: number) {
     gen++;
     clearTimer();
+    if (sourceApp !== undefined && sourceApp !== appId) {
+      closeStream();
+      streamGaveUp = false;
+    }
     const g = gen;
     loading.value = true;
     try {
@@ -73,7 +140,7 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
     try {
       const next = await call();
       if (g === gen && next.application_id === appId) {
-        letter.value = next;
+        accept(next, g);
         schedule(appId);
       }
       return true;
@@ -112,5 +179,5 @@ export const useCoverLetterStore = defineStore("coverLetter", () => {
     }
   }
 
-  return { letter, loading, load, create, saveContent, send, repair, attach, remove, stopPolling };
+  return { letter, loading, streamText, streamPhase, load, create, saveContent, send, repair, attach, remove, stopPolling };
 });
