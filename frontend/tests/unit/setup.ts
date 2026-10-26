@@ -19,3 +19,14 @@ document.elementsFromPoint ??= () => [];
 const emptyRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
 Range.prototype.getClientRects ??= emptyRects;
 Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+
+// Vuetify's v-textarea auto-grow calls getComputedStyle on every input; with the Vuetify CSS loaded
+// (css.include) jsdom resolves the full cascade each time, which costs seconds per call and made the
+// textarea tests time out under load. jsdom has no layout, so the values are empty/NaN anyway: answer
+// those two lookups with an empty style instead.
+const realGetComputedStyle = window.getComputedStyle.bind(window);
+const emptyStyle = { lineHeight: "", getPropertyValue: () => "" } as unknown as CSSStyleDeclaration;
+window.getComputedStyle = ((el: Element, pseudo?: string | null) =>
+  el.classList?.contains("v-textarea__sizer") || el.classList?.contains("v-field")
+    ? emptyStyle
+    : realGetComputedStyle(el, pseudo)) as typeof window.getComputedStyle;
