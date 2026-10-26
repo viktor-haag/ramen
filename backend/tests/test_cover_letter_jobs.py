@@ -1,10 +1,14 @@
 """Cover letter state service and background jobs (spec 5.3-5.6), with a fake LLM and a fake compiler."""
+import logging
+import threading
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.cover_letters import jobs as jobs_module
 from app.cover_letters.jobs import CoverLetterJobs
 from app.errors import ConflictError, NotFoundError, UpstreamError
 from app.latex.compiler import CompileResult
@@ -91,6 +95,7 @@ def make_jobs(sf, settings):
 
     def make(ask, compiler=None):
         jobs = CoverLetterJobs(sf, settings, compiler or FakeCompiler(), ask=ask)
+        jobs.sf = sf  # for `run`
         made.append(jobs)
         return jobs
 
@@ -125,8 +130,18 @@ def load(sf, cl_id) -> CoverLetter | None:
         return cl
 
 
-def run(jobs, method, *args):
-    getattr(jobs, method)(*args)
+def created_at(sf, cl_id) -> datetime:
+    with sf() as s:
+        return s.get(CoverLetter, cl_id).created_at
+
+
+def submit(sf, jobs, method, cl_id, *args):
+    """Start a job as the router does: with the draft's `created_at` at submit time."""
+    getattr(jobs, method)(cl_id, *args, created_at=created_at(sf, cl_id))
+
+
+def run(jobs, method, cl_id, *args):
+    submit(jobs.sf, jobs, method, cl_id, *args)
     assert jobs.wait_idle(TIMEOUT)
 
 
@@ -317,7 +332,7 @@ def test_application_deleted_during_compile(sf, settings, make_jobs):
 def replace_with_new_draft_same_id(sf, cl_id):
     """Delete the job's draft (via its application) and create a newer draft that reuses the same id."""
     with sf() as s:
-        s.delete(s.scalars(select(Application)).one())
+        s.delete(s.get(CoverLetter, cl_id).application)
         s.commit()
         posting = Posting(source="s", external_id="new", title="Other", company="Beta")
         application = Application(posting=posting)
@@ -368,6 +383,62 @@ def test_stale_job_failure_is_not_recorded_on_reused_id(sf, settings, make_jobs)
 
     run(make_jobs(FakeAsk(answer(), on_call=replace_then_fail)), "generate", cl_id)
     assert_new_draft_untouched(sf, settings, cl_id)
+
+
+def test_queued_job_skips_draft_replaced_before_it_starts(sf, settings, make_jobs):
+    """The identity is snapshot at submit time: a job queued behind another must not adopt a newer draft."""
+    first = seed(sf)
+    with sf() as s:
+        posting = Posting(source="s", external_id="2", title="Ops", company="Zeta")
+        application = Application(posting=posting)
+        cl = CoverLetter(application=application, format=CoverLetterFormat.latex, language=CoverLetterLanguage.en,
+                         template_content=TEMPLATE, context={"profile": False, "document_ids": [], "notes": ""},
+                         content="", status=CoverLetterStatus.generating)
+        s.add_all([posting, application, cl])
+        s.commit()
+        second = cl.id
+    started, release = threading.Event(), threading.Event()
+
+    def block():
+        if len(ask.calls) == 1:
+            started.set()
+            assert release.wait(TIMEOUT)
+
+    ask = FakeAsk(answer(), answer(), on_call=block)
+    jobs = make_jobs(ask, FakeCompiler(ok(), ok()))
+    submit(sf, jobs, "generate", first)
+    assert started.wait(TIMEOUT)
+    submit(sf, jobs, "generate", second)  # queued behind the first job
+    replace_with_new_draft_same_id(sf, second)
+    release.set()
+    assert jobs.wait_idle(TIMEOUT)
+    assert len(ask.calls) == 1  # the second job ended before its LLM call
+    assert load(sf, first).content == LETTER
+    assert_new_draft_untouched(sf, settings, second)
+
+
+def test_compiled_gone_under_lock_keeps_newer_drafts_pdf(sf, settings, make_jobs, monkeypatch):
+    """`_Gone` before this call wrote the PDF must not delete the newer draft's `<id>.pdf`."""
+    cl_id = seed(sf)
+    newer_pdf = b"%PDF newer draft"
+    real_pdf_file = jobs_module.pdf_file
+
+    def replacing_pdf_file(settings_, cl):
+        # between `_get` and the check under the write lock: a newer draft took the id and has its own PDF
+        replace_with_new_draft_same_id(sf, cl_id)
+        path = real_pdf_file(settings_, cl)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(newer_pdf)
+        with sf() as s:
+            s.get(CoverLetter, cl_id).pdf_path = path.name
+            s.commit()
+        return path
+
+    monkeypatch.setattr(jobs_module, "pdf_file", replacing_pdf_file)
+    run(make_jobs(FakeAsk(answer()), FakeCompiler(ok())), "generate", cl_id)
+    cl = load(sf, cl_id)
+    assert cl.content == "NEW" and cl.messages == [] and cl.error is None and cl.pdf_path == f"{cl_id}.pdf"
+    assert (settings.cover_letters_dir / f"{cl_id}.pdf").read_bytes() == newer_pdf
 
 
 def test_new_content_clears_stale_error_and_log(sf, make_jobs):
@@ -512,6 +583,28 @@ def test_pdf_removed_only_after_commit(sf, settings):
         cover_letters.delete(s, settings, s.get(CoverLetter, cl_id))
         s.commit()  # an earlier rollback on this session must not have dropped the hook
     assert not pdf.exists()
+
+
+def test_unlink_failure_after_commit_is_logged(sf, settings, monkeypatch, caplog):
+    """A file that cannot be deleted (open on Windows) must not turn the successful commit into an error."""
+    settings.cover_letters_dir.mkdir(parents=True, exist_ok=True)
+    locked, other = settings.cover_letters_dir / "locked.pdf", settings.cover_letters_dir / "other.pdf"
+    locked.write_bytes(PDF)
+    other.write_bytes(PDF)
+    real_unlink = Path.unlink
+
+    def unlink(self, missing_ok=False):
+        if self.name == "locked.pdf":
+            raise PermissionError(13, "in use", str(self))
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", unlink)
+    with caplog.at_level(logging.WARNING, logger="app.services.cover_letters"), sf() as s:
+        cover_letters.unlink_after_commit(s, locked)
+        cover_letters.unlink_after_commit(s, other)
+        s.commit()  # does not raise
+    assert locked.exists() and not other.exists()
+    assert any("locked.pdf" in r.getMessage() for r in caplog.records)
 
 
 def test_delete_removes_pdf(sf, settings):

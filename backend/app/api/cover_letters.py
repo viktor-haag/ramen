@@ -21,7 +21,7 @@ from app.models import AttachmentKind, CoverLetter, CoverLetterTemplate
 from app.models.enums import CoverLetterFormat, CoverLetterStatus, MessageRole
 from app.schemas.application import AttachmentOut
 from app.schemas.cover_letter import ContentIn, CoverLetterIn, CoverLetterOut, MessageIn, MessageOut
-from app.services import attachments
+from app.services import attachments, cover_letter_llm
 from app.services import cover_letters as svc
 from app.services.applications import get_application
 
@@ -107,14 +107,16 @@ def create(
     settings: Settings = Depends(get_settings),
     jobs: CoverLetterJobs = Depends(get_jobs),
 ):
-    get_application(session, app_id)
+    application = get_application(session, app_id)
     existing = session.scalar(select(CoverLetter).where(CoverLetter.application_id == app_id))
     if existing is not None:
         svc.ensure_idle(existing)
     svc.ensure_within_limit(session)
+    # 422 `cover_letter_context_too_large` before anything changes: the old draft stays intact (spec 5.1)
+    cover_letter_llm.build_context(session, application, body.context.model_dump())
     cl = svc.replace(session, settings, app_id, body)  # status = generating
     session.commit()
-    jobs.generate(cl.id)
+    jobs.generate(cl.id, created_at=cl.created_at)
     return _out(session, settings, jobs, cl)
 
 
@@ -135,7 +137,7 @@ def save_content(
     svc.remove_pdf(session, settings, cl)
     if cl.format == CoverLetterFormat.latex:
         _start(session, cl, CoverLetterStatus.compiling)
-        jobs.compile_only(cl.id)
+        jobs.compile_only(cl.id, created_at=cl.created_at)
     else:
         session.commit()
         response.status_code = 200
@@ -155,7 +157,7 @@ def send_message(
     svc.ensure_within_limit(session)
     svc.add_message(session, cl, MessageRole.user, body.text)
     _start(session, cl, CoverLetterStatus.generating)
-    jobs.revise(cl.id, body.text)
+    jobs.revise(cl.id, body.text, created_at=cl.created_at)
     return _out(session, settings, jobs, cl)
 
 
@@ -173,7 +175,7 @@ def repair(
     svc.ensure_within_limit(session)
     svc.add_message(session, cl, MessageRole.user, REPAIR_MESSAGE)
     _start(session, cl, CoverLetterStatus.generating)
-    jobs.repair(cl.id)
+    jobs.repair(cl.id, created_at=cl.created_at)
     return _out(session, settings, jobs, cl)
 
 

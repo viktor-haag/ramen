@@ -45,10 +45,13 @@ class _Gone(Exception):
 
 @dataclass
 class _Ref:
-    """Identity of the job's draft. SQLite may reuse a deleted id, so `created_at` (snapshot in `_load`) must match."""
+    """Identity of the job's draft, snapshot when the job is submitted.
+
+    SQLite may reuse a deleted id, so `created_at` must match as well.
+    """
 
     id: int
-    created_at: datetime | None = None
+    created_at: datetime
 
 
 @dataclass
@@ -82,22 +85,24 @@ class CoverLetterJobs:
         self._futures: set[Future] = set()
 
     # --- public API: each starts one job and returns immediately ------------------------------------
+    # `created_at` is the draft's `created_at` at submit time: if the row with `cl_id` has another one when
+    # the job runs (deleted, id reused by a newer draft), the job ends without touching it.
 
-    def generate(self, cl_id: int) -> None:
+    def generate(self, cl_id: int, *, created_at: datetime) -> None:
         """Spec 5.3: LLM call with context + template, then (latex) compile with automatic repair."""
-        self._submit(self._generate, cl_id)
+        self._submit(self._generate, _Ref(cl_id, created_at))
 
-    def revise(self, cl_id: int, instruction: str) -> None:
+    def revise(self, cl_id: int, instruction: str, *, created_at: datetime) -> None:
         """Spec 5.4: LLM call with context, current content and the user's request (message stored by the router)."""
-        self._submit(self._revise, cl_id, instruction)
+        self._submit(self._revise, _Ref(cl_id, created_at), instruction)
 
-    def repair(self, cl_id: int) -> None:
+    def repair(self, cl_id: int, *, created_at: datetime) -> None:
         """Spec 5.5 (manual): one LLM call for the current compile error, then compile without further repair."""
-        self._submit(self._repair, cl_id)
+        self._submit(self._repair, _Ref(cl_id, created_at))
 
-    def compile_only(self, cl_id: int) -> None:
+    def compile_only(self, cl_id: int, *, created_at: datetime) -> None:
         """After a manual edit: compile the current content, no repair."""
-        self._submit(self._compile_only, cl_id)
+        self._submit(self._compile_only, _Ref(cl_id, created_at))
 
     def recover(self, session: Session) -> int:
         """At start: drafts left `generating`/`compiling` become idle with `cover_letter_interrupted` (caller commits)."""
@@ -120,11 +125,11 @@ class CoverLetterJobs:
 
     # --- job frame ----------------------------------------------------------------------------------
 
-    def _submit(self, fn: Callable[..., None], cl_id: int, *args) -> Future | None:
+    def _submit(self, fn: Callable[..., None], ref: _Ref, *args) -> Future | None:
         try:
-            future = self._executor.submit(self._job, fn, cl_id, *args)
+            future = self._executor.submit(self._job, fn, ref, *args)
         except RuntimeError:  # shut down: the draft is recovered at the next start
-            log.warning("cover letter job for %s not started: shutting down", cl_id)
+            log.warning("cover letter job for %s not started: shutting down", ref.id)
             return None
         with self._lock:
             self._futures.add(future)
@@ -135,16 +140,15 @@ class CoverLetterJobs:
         with self._lock:
             self._futures.discard(future)
 
-    def _job(self, fn: Callable[..., None], cl_id: int, *args) -> None:
-        ref = _Ref(cl_id)
+    def _job(self, fn: Callable[..., None], ref: _Ref, *args) -> None:
         try:
             fn(ref, *args)
         except _Gone:
-            log.info("cover letter %s was deleted while its job ran", cl_id)
+            log.info("cover letter %s was deleted before or while its job ran", ref.id)
         except AppError as exc:
             self._fail(ref, {"code": exc.code, "params": exc.params, "detail": exc.detail})
         except Exception:
-            log.exception("cover letter job for %s failed", cl_id)
+            log.exception("cover letter job for %s failed", ref.id)
             self._fail(ref, dict(INTERNAL))
 
     def _fail(self, ref: _Ref, error: dict) -> None:
@@ -158,7 +162,7 @@ class CoverLetterJobs:
     def _get(self, session: Session, ref: _Ref) -> CoverLetter:
         """The job's draft; `_Gone` if it was deleted or its id now belongs to a newer draft."""
         cl = session.get(CoverLetter, ref.id)
-        if cl is None or (ref.created_at is not None and cl.created_at != ref.created_at):
+        if cl is None or cl.created_at != ref.created_at:
             raise _Gone
         return cl
 
@@ -199,12 +203,9 @@ class CoverLetterJobs:
     # --- steps --------------------------------------------------------------------------------------
 
     def _load(self, ref: _Ref, status: CoverLetterStatus, *, with_context: bool) -> _Draft:
-        """Snapshot the draft and its identity and mark it busy; optionally build the LLM context."""
+        """Snapshot the draft and mark it busy; optionally build the LLM context."""
         with self._session_factory() as session:
-            cl = session.get(CoverLetter, ref.id)
-            if cl is None:
-                raise _Gone
-            ref.created_at = cl.created_at
+            cl = self._get(session, ref)
             draft = _Draft(cl.format.value, cl.template_content, cl.content, cl.error, cl.compile_log)
             cl.status = status
             session.commit()
@@ -286,16 +287,19 @@ class CoverLetterJobs:
             cl.status = CoverLetterStatus.idle
             cl.error = None
             cl.compile_log = None
+            written = False
             try:
                 session.flush()  # takes the SQLite write lock
                 current = session.scalar(select(CoverLetter.created_at).where(CoverLetter.id == ref.id))
                 if current != ref.created_at:  # re-checked under the lock: still our draft
                     raise _Gone
                 path.parent.mkdir(parents=True, exist_ok=True)
+                written = True  # set before the write: a partly written file is ours too
                 path.write_bytes(pdf)
                 session.commit()
             except BaseException:
-                path.unlink(missing_ok=True)
+                if written:  # never delete a file this call did not write (e.g. a newer draft's PDF)
+                    path.unlink(missing_ok=True)
                 raise
 
     def _compile_failed(self, ref: _Ref, error: dict, compile_log: str | None) -> None:

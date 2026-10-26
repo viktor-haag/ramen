@@ -1,5 +1,6 @@
 """Cover letter API (spec 7.2) with fake background jobs: endpoints, attachment, source, PDF, permissions."""
 import os
+from pathlib import Path
 from urllib.parse import quote, unquote
 
 import pytest
@@ -17,8 +18,9 @@ from app.models import (
     CoverLetterTemplate,
     LLMUsage,
     Posting,
+    ProfileDocument,
 )
-from app.models.enums import CoverLetterStatus
+from app.models.enums import CoverLetterStatus, DocumentKind
 from test_profile_docs import add_config
 
 PDF = b"%PDF-1.4 fake"
@@ -34,36 +36,40 @@ class FakeCompiler:
 
 
 class FakeJobs:
-    """Records calls; `generate`/`revise`/`repair` synchronously store a fixed text and go idle."""
+    """Records calls; `generate`/`revise`/`repair` synchronously store a fixed text and go idle.
+
+    Every call must carry the draft's current `created_at` (the job's identity snapshot at submit time).
+    """
 
     def __init__(self, session_factory):
         self._sf = session_factory
         self.compiler = FakeCompiler()
         self.calls: list[tuple] = []
 
-    def _done(self, cl_id, content=FAKE_CONTENT):
+    def _done(self, cl_id, created_at, content=FAKE_CONTENT):
         with self._sf() as s:
             cl = s.get(CoverLetter, cl_id)
+            assert created_at is not None and cl.created_at == created_at
             if content is not None:
                 cl.content = content
             cl.status = CoverLetterStatus.idle
             s.commit()
 
-    def generate(self, cl_id):
+    def generate(self, cl_id, *, created_at):
         self.calls.append(("generate", cl_id))
-        self._done(cl_id)
+        self._done(cl_id, created_at)
 
-    def revise(self, cl_id, instruction):
+    def revise(self, cl_id, instruction, *, created_at):
         self.calls.append(("revise", cl_id, instruction))
-        self._done(cl_id)
+        self._done(cl_id, created_at)
 
-    def repair(self, cl_id):
+    def repair(self, cl_id, *, created_at):
         self.calls.append(("repair", cl_id))
-        self._done(cl_id)
+        self._done(cl_id, created_at)
 
-    def compile_only(self, cl_id):
+    def compile_only(self, cl_id, *, created_at):
         self.calls.append(("compile_only", cl_id))
-        self._done(cl_id, content=None)
+        self._done(cl_id, created_at, content=None)
 
     def wait_idle(self, timeout):
         return True
@@ -173,6 +179,33 @@ def test_post_notes_limit(client, app, jobs):
     data = body("text")
     data["context"]["notes"] = "x" * 5001
     assert client.post(url(app_id), json=data).status_code == 422
+
+
+def test_post_context_too_large_keeps_old_draft(client, app, jobs, settings):
+    """Spec 5.1: the POST itself answers 422; the existing draft (content, chat, PDF) stays unchanged."""
+    add_config(client)
+    app_id, first = create(client, app)
+    assert client.post(url(app_id, "/messages"), json={"text": "shorter"}).status_code == 202
+    pdf = settings.cover_letters_dir / f"{first['id']}.pdf"
+    pdf.write_bytes(PDF)
+    set_fields(app, app_id, pdf_path=pdf.name)
+    before = client.get(url(app_id)).json()
+    with app.state.session_factory() as s:
+        docs = [ProfileDocument(filename="f", display_name=f"d{i}", stored_path="p", mime="text/plain",
+                                kind=DocumentKind.text, text="y" * 20_000) for i in range(7)]
+        s.add_all(docs)
+        s.commit()
+        ids = [d.id for d in docs]
+    jobs.calls.clear()
+    data = body("text")
+    data["context"] = {"profile": False, "document_ids": ids, "notes": ""}
+    r = client.post(url(app_id), json=data)
+    assert r.status_code == 422 and r.json()["code"] == "cover_letter_context_too_large"
+    assert jobs.calls == []
+    after = client.get(url(app_id)).json()
+    assert after == before
+    assert after["content"] == FAKE_CONTENT and len(after["messages"]) == 1 and after["pdf_available"] is True
+    assert pdf.read_bytes() == PDF
 
 
 def test_post_while_busy(client, app, jobs):
@@ -320,6 +353,24 @@ def test_delete(client, app, jobs, settings):
     assert client.delete(url(app_id)).status_code == 204
     assert client.get(url(app_id)).status_code == 404
     assert not pdf.exists()
+
+
+def test_delete_succeeds_when_pdf_cannot_be_unlinked(client, app, jobs, settings, monkeypatch):
+    """On Windows an open (streamed) PDF cannot be deleted: the commit still succeeds, the file stays."""
+    add_config(client)
+    app_id, out = create(client, app)
+    pdf = settings.cover_letters_dir / f"{out['id']}.pdf"
+    pdf.write_bytes(PDF)
+    set_fields(app, app_id, pdf_path=pdf.name)
+
+    def locked(self, missing_ok=False):
+        raise PermissionError(13, "in use", str(self))
+
+    monkeypatch.setattr(Path, "unlink", locked)
+    assert client.delete(url(app_id)).status_code == 204
+    monkeypatch.undo()
+    assert client.get(url(app_id)).status_code == 404
+    assert pdf.exists()
 
 
 # --- pdf / source / attach -------------------------------------------------------------------------

@@ -2,7 +2,9 @@
 
 Every function works on the given session; the caller commits.
 """
+import logging
 from pathlib import Path
+
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
@@ -13,6 +15,8 @@ from app.models.enums import CoverLetterFormat, CoverLetterStatus, MessageRole
 from app.models.posting import utcnow
 from app.schemas.cover_letter import CoverLetterIn
 from app.services import cover_letter_templates, llm_configs, usage
+
+log = logging.getLogger(__name__)
 
 
 def get_for_application(session: Session, app_id: int) -> CoverLetter:
@@ -49,8 +53,12 @@ _UNLINK_KEY = "cover_letter_unlink"
 
 
 def _unlink_pending(session: Session) -> None:
+    """After the commit: a file that cannot be deleted (e.g. still open on Windows) is only logged."""
     for path in session.info.pop(_UNLINK_KEY, set()):
-        path.unlink(missing_ok=True)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            log.warning("could not delete the cover letter PDF %s: %s", path, exc)
 
 
 def _drop_pending(session: Session) -> None:
