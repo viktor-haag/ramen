@@ -11,12 +11,18 @@ from app.models import (
     AppSetting,
     Attachment,
     Contact,
+    CoverLetter,
+    CoverLetterFormat,
+    CoverLetterLanguage,
+    CoverLetterMessage,
+    CoverLetterTemplate,
     DocumentKind,
     LLMConfig,
     LLMProvider,
     LLMPurpose,
     LLMPurposeKind,
     LLMUsage,
+    MessageRole,
     PluginSetting,
     Posting,
     PostingFit,
@@ -64,7 +70,12 @@ def seed(db):
         PostingFit(posting_id=kept.id, status=FitStatus.done, rating=FitRating.good, profile_version=1),
         PostingFit(posting_id=new.id, status=FitStatus.queued),
     ])
+    letter = CoverLetter(application_id=app_.id, format=CoverLetterFormat.text,
+                         language=CoverLetterLanguage.en, content="Dear")
+    letter.messages.append(CoverLetterMessage(role=MessageRole.user, text="hi"))
     db.add_all([
+        letter,
+        CoverLetterTemplate(name="Mine", content="tex"),
         Contact(application_id=app_.id, name="C"),
         StatusChange(application_id=app_.id, from_status=None, to_status=AppStatus.saved),
         Appointment(application_id=app_.id, kind=AppointmentKind.other, starts_at=NOW),
@@ -130,13 +141,15 @@ def test_reset_clears_everything(client, app, db):
         "posting_fit": 2, "posting_match": 3, "status_change": 1, "appointment": 1, "contact": 1, "attachment": 1,
         "application": 1, "job_posting": 3, "search_run": 2, "search_profile": 2, "plugin_setting": 1,
         "llm_usage": 1, "llm_purpose": 1, "llm_config": 1, "app_setting": 1, "profile_document": 1,
-        "user_profile": 1, "cover_letter_message": 0, "cover_letter": 0, "cover_letter_template": 0,
+        "user_profile": 1, "cover_letter_message": 1, "cover_letter": 1,
     }}
     db.expire_all()
     for model in (Posting, PostingFit, PostingMatch, SearchProfile, SearchRun, Application, StatusChange,
                   Appointment, Contact, Attachment, PluginSetting, LLMConfig, LLMPurpose, LLMUsage,
-                  AppSetting, ProfileDocument, UserProfile):
+                  AppSetting, ProfileDocument, UserProfile, CoverLetter, CoverLetterMessage):
         assert count(db, model) == 0, model
+    # templates are settings: builtin and user-uploaded ones survive
+    assert sorted(db.scalars(select(CoverLetterTemplate.name))) == ["Deedy", "Mine"]
     assert att_dir.is_dir()
     assert list(att_dir.iterdir()) == []
     assert prof_dir.is_dir()
@@ -182,7 +195,7 @@ def test_reset_order_covers_every_table():
     from app.db import Base
     from app.services.admin import _RESET_ORDER
 
-    assert {model.__tablename__ for _, model in _RESET_ORDER} == set(Base.metadata.tables)
+    assert {model.__tablename__ for _, model in _RESET_ORDER} == set(Base.metadata.tables) - {"cover_letter_template"}
 
 
 def test_reset_survives_attachment_cleanup_failure(client, app, db, monkeypatch):

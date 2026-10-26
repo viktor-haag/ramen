@@ -15,7 +15,6 @@ from app.models import (
     Contact,
     CoverLetter,
     CoverLetterMessage,
-    CoverLetterTemplate,
     LLMConfig,
     LLMPurpose,
     LLMUsage,
@@ -55,11 +54,9 @@ _RESET_ORDER = (
     ("app_setting", AppSetting),
     ("profile_document", ProfileDocument),
     ("user_profile", UserProfile),
-    ("cover_letter_template", CoverLetterTemplate),
 )
 
-# The built-in template is seeded by a migration only, so a reset must keep it.
-_RESET_KEEP = {"cover_letter_template": CoverLetterTemplate.builtin.is_(False)}
+# cover_letter_template is deliberately absent: templates are settings and survive a reset.
 
 
 def _ensure_no_active_runs(session: Session) -> None:
@@ -81,10 +78,7 @@ def reset_all(session: Session) -> dict[str, dict[str, int]]:
     _ensure_no_active_runs(session)
     counts: dict[str, int] = {}
     for name, model in _RESET_ORDER:
-        stmt = delete(model)
-        if name in _RESET_KEEP:
-            stmt = stmt.where(_RESET_KEEP[name])
-        counts[name] = session.execute(stmt).rowcount
+        counts[name] = session.execute(delete(model)).rowcount
     return {"deleted": counts}
 
 
