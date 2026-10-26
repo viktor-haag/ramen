@@ -133,6 +133,28 @@ describe("CoverLetterView", () => {
     w.unmount();
   });
 
+  it("offers the repair button on latex_forbidden too, without a compile log", async () => {
+    current = letterOut({ error: { code: "latex_forbidden", params: { command: "\\input", line: 2 }, detail: "x" } });
+    post.mockResolvedValue(letterOut({ status: "generating" }));
+    const w = await mountView();
+    expect(q("[data-test=cl-compile-log]")).toBeNull();
+    const button = q("[data-test=cl-repair]")!;
+    expect(button.classList).not.toContain("v-btn--disabled");
+    button.click();
+    await flushPromises();
+    expect(post).toHaveBeenCalledWith("/applications/7/cover-letter/repair");
+    useCoverLetterStore().stopPolling();
+    w.unmount();
+  });
+
+  it("has no repair button for other errors", async () => {
+    current = letterOut({ error: { code: "latex_timeout", params: {}, detail: "x" } });
+    const w = await mountView();
+    expect(q("[data-test=cl-error]")).not.toBeNull();
+    expect(q("[data-test=cl-repair]")).toBeNull();
+    w.unmount();
+  });
+
   it("with unsaved edits, repair, attach and download wait for saving", async () => {
     current = letterOut({ error: { code: "latex_failed", params: {}, detail: "x" }, compile_log: "! Error.", pdf_available: true });
     const w = await mountView();

@@ -76,6 +76,9 @@ const error = computed(() => {
 const noCompiler = computed(() => latex.value && letter.value?.compiler_available === false);
 /** The missing-compiler hint already says it all. */
 const showError = computed(() => !!error.value && !(noCompiler.value && error.value.code === "latex_unavailable"));
+/** Same codes as the backend's `REPAIRABLE`: the LLM can fix a compile error and a forbidden command. */
+const REPAIRABLE = ["latex_failed", "latex_forbidden"];
+const repairable = computed(() => latex.value && REPAIRABLE.includes(error.value?.code ?? ""));
 const forbiddenLine = computed(() => {
   if (error.value?.code !== "latex_forbidden") return null;
   const line = Number(error.value.params.line);
@@ -248,8 +251,8 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
 
       <v-alert v-if="showError && error" type="error" variant="tonal" density="compact" class="mb-2" data-test="cl-error">
         <div>{{ error.text }}</div>
-        <template v-if="error.code === 'latex_failed'">
-          <pre v-if="letter.compile_log" class="cl-log mt-2" data-test="cl-compile-log">{{ letter.compile_log }}</pre>
+        <pre v-if="error.code === 'latex_failed' && letter.compile_log" class="cl-log mt-2" data-test="cl-compile-log">{{ letter.compile_log }}</pre>
+        <template v-if="repairable">
           <v-btn class="mt-2" size="small" variant="flat" color="error" prepend-icon="mdi-auto-fix" :disabled="dirty" :loading="repairing" data-test="cl-repair" @click="repair">
             {{ t("coverLetter.view.repair") }}
           </v-btn>
