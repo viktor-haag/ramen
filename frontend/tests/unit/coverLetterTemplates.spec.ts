@@ -138,5 +138,12 @@ describe("CoverLetterTemplatesCard", () => {
     await flushPromises();
     expect(document.body.textContent).toContain("Existing cover letters keep their own copy.");
     w.unmount();
+    setLocale("de");
+    const wde = await mountCard();
+    await wde.get('[data-test="cover-template-delete-2"]').trigger("click");
+    await flushPromises();
+    expect(document.body.textContent).toContain("Das Template „Mine“ löschen? Bestehende Anschreiben behalten ihre eigene Kopie.");
+    wde.unmount();
+    setLocale("en");
   });
 });

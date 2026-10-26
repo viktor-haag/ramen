@@ -173,7 +173,7 @@
     "alreadyRunning": "Für dieses Profil läuft bereits eine Suche.",
     "history": "Lauf-Historie",
     "noHistory": "Noch keine Läufe.",
-    "deleteTitle": "Suchprofil löschen? Bestehende Anschreiben behalten ihre eigene Kopie.",
+    "deleteTitle": "Suchprofil löschen?",
     "deleteText": "{name} wird entfernt. Gefundene Stellen bleiben erhalten.",
     "noExtractors": "Keine Such-Plugins verfügbar.",
     "disabledInSettings": "in den Einstellungen deaktiviert",
@@ -654,6 +654,6 @@
     "renameTitle": "Template umbenennen",
     "name": "Name",
     "deleteTitle": "Template löschen",
-    "deleteText": "Das Template „{name}“ löschen?"
+    "deleteText": "Das Template „{name}“ löschen? Bestehende Anschreiben behalten ihre eigene Kopie."
   }
 }
