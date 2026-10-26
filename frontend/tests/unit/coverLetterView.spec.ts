@@ -234,7 +234,10 @@ describe("CoverLetterView", () => {
       dispatch(...args);
       docs.push(cm.state.doc.toString());
     }) as EditorView["dispatch"];
-    store.letter = letterOut({ status: "generating", content: "\\documentclass{article}\nFinal letter", pdf_available: false });
+    // The store polls every 2 s while generating and a slow run lets that fire: the server must already answer
+    // with the final letter, or the poll would put the old draft back.
+    current = letterOut({ status: "generating", content: "\\documentclass{article}\nFinal letter", pdf_available: false });
+    store.letter = current;
     store.streamText = null;
     store.streamPhase = null;
     await flushPromises();
@@ -242,7 +245,8 @@ describe("CoverLetterView", () => {
     expect(q("[data-test=cl-stream-status]")).toBeNull();
     expect(q("[data-test=cl-editor] .cm-content")!.textContent).toContain("Final letter");
     expect(q("[data-test=cl-dirty-hint]")).toBeNull();
-    store.letter = letterOut({ content: "\\documentclass{article}\nFinal letter", pdf_available: false });
+    current = letterOut({ content: "\\documentclass{article}\nFinal letter", pdf_available: false });
+    store.letter = current;
     await flushPromises();
     expect(q("[data-test=cl-save]")!.classList).toContain("v-btn--disabled"); // not dirty
     store.stopPolling();
