@@ -78,6 +78,8 @@ describe("CoverLetterTemplatesCard", () => {
     expect(upload.mock.calls[0][0]).toBe("/cover-letter-templates");
     expect((upload.mock.calls[0][1] as FormData).get("file")).toBeInstanceOf(File);
     expect(w.find('[data-test="cover-template-3"]').exists()).toBe(true);
+    expect(w.findComponent({ name: "VFileInput" }).props("modelValue")).toBeNull();
+    expect(w.get('[data-test="cover-template-upload"]').attributes("disabled")).toBeDefined();
     w.unmount();
   });
 
@@ -111,6 +113,30 @@ describe("CoverLetterTemplatesCard", () => {
     await flushPromises();
     expect(del).toHaveBeenCalledWith("/cover-letter-templates/2");
     expect(w.find('[data-test="cover-template-2"]').exists()).toBe(false);
+    w.unmount();
+  });
+
+  it("disables Save for empty or over-long names", async () => {
+    const w = await mountCard();
+    await w.get('[data-test="cover-template-rename-2"]').trigger("click");
+    await flushPromises();
+    const field = document.body.querySelector('[data-test="cover-template-rename-input"] input') as HTMLInputElement;
+    expect(field.getAttribute("maxlength")).toBe("120");
+    const save = () => document.body.querySelector('[data-test="cover-template-rename-save"]') as HTMLButtonElement;
+    for (const [value, disabled] of [["   ", true], ["x".repeat(121), true], ["x".repeat(120), false]] as const) {
+      field.value = value;
+      field.dispatchEvent(new Event("input"));
+      await flushPromises();
+      expect(save().disabled).toBe(disabled);
+    }
+    w.unmount();
+  });
+
+  it("delete confirmation mentions that letters keep their copy", async () => {
+    const w = await mountCard();
+    await w.get('[data-test="cover-template-delete-2"]').trigger("click");
+    await flushPromises();
+    expect(document.body.textContent).toContain("Existing cover letters keep their own copy.");
     w.unmount();
   });
 });

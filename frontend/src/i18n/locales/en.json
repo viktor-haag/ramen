@@ -142,11 +142,7 @@
     "board": "Board",
     "table": "Table",
     "showFinished": "Show finished",
-    "export": {
-      "button": "Export",
-      "csv": "CSV (.csv)",
-      "xlsx": "Excel (.xlsx)"
-    },
+    "export": { "button": "Export", "csv": "CSV (.csv)", "xlsx": "Excel (.xlsx)" },
     "hideSaved": "Hide saved",
     "search": "Search",
     "untitled": "Untitled posting",
@@ -658,6 +654,6 @@
     "renameTitle": "Rename template",
     "name": "Name",
     "deleteTitle": "Delete template",
-    "deleteText": "Delete the template \"{name}\"?"
+    "deleteText": "Delete the template \"{name}\"? Existing cover letters keep their own copy."
   }
 }

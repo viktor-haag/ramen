@@ -142,11 +142,7 @@
     "board": "Board",
     "table": "Tabelle",
     "showFinished": "Beendete anzeigen",
-    "export": {
-      "button": "Exportieren",
-      "csv": "CSV (.csv)",
-      "xlsx": "Excel (.xlsx)"
-    },
+    "export": { "button": "Exportieren", "csv": "CSV (.csv)", "xlsx": "Excel (.xlsx)" },
     "hideSaved": "Gemerkte ausblenden",
     "search": "Suchen",
     "untitled": "Stelle ohne Titel",
@@ -177,7 +173,7 @@
     "alreadyRunning": "Für dieses Profil läuft bereits eine Suche.",
     "history": "Lauf-Historie",
     "noHistory": "Noch keine Läufe.",
-    "deleteTitle": "Suchprofil löschen?",
+    "deleteTitle": "Suchprofil löschen? Bestehende Anschreiben behalten ihre eigene Kopie.",
     "deleteText": "{name} wird entfernt. Gefundene Stellen bleiben erhalten.",
     "noExtractors": "Keine Such-Plugins verfügbar.",
     "disabledInSettings": "in den Einstellungen deaktiviert",

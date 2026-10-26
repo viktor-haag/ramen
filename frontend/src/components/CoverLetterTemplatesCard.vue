@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type { CoverLetterTemplate } from "@/api/types";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -30,14 +30,21 @@ async function upload() {
 const renaming = ref<CoverLetterTemplate | null>(null);
 const renameDraft = ref("");
 const renameBusy = ref(false);
+const MAX_NAME = 120;
+const renameInvalid = computed(() => {
+  const n = renameDraft.value.trim();
+  return n === "" || n.length > MAX_NAME;
+});
+// The delete dialog text reads this copy, so the name stays put during the close animation.
+const deleteName = ref("");
 function openRename(item: CoverLetterTemplate) {
   renaming.value = item;
   renameDraft.value = item.name;
 }
 async function saveRename() {
   if (!renaming.value || renameBusy.value) return;
+  if (renameInvalid.value) return;
   const name = renameDraft.value.trim();
-  if (!name) return;
   renameBusy.value = true;
   try {
     if (name === renaming.value.name || (await store.rename(renaming.value.id, name))) renaming.value = null;
@@ -49,6 +56,10 @@ async function saveRename() {
 // --- delete ---
 const deleting = ref<CoverLetterTemplate | null>(null);
 const deleteBusy = ref(false);
+function askDelete(item: CoverLetterTemplate) {
+  deleting.value = item;
+  deleteName.value = item.name;
+}
 async function confirmDelete() {
   if (!deleting.value || deleteBusy.value) return;
   deleteBusy.value = true;
@@ -111,8 +122,9 @@ async function confirmDelete() {
               variant="text"
               size="small"
               :aria-label="t('common.delete')"
+              :title="t('common.delete')"
               :data-test="`cover-template-delete-${item.id}`"
-              @click="deleting = item"
+              @click="askDelete(item)"
             />
           </template>
         </v-list-item>
@@ -125,7 +137,9 @@ async function confirmDelete() {
           <v-text-field
             v-model="renameDraft"
             :label="t('coverTemplates.name')"
-            hide-details
+            hide-details="auto"
+            :counter="MAX_NAME"
+            maxlength="120"
             autofocus
             data-test="cover-template-rename-input"
             @keydown.enter="saveRename"
@@ -134,7 +148,7 @@ async function confirmDelete() {
         <v-card-actions>
           <v-spacer />
           <v-btn data-test="cover-template-rename-cancel" @click="renaming = null">{{ t("common.cancel") }}</v-btn>
-          <v-btn color="primary" variant="flat" :loading="renameBusy" :disabled="!renameDraft.trim()" data-test="cover-template-rename-save" @click="saveRename">{{ t("common.save") }}</v-btn>
+          <v-btn color="primary" variant="flat" :loading="renameBusy" :disabled="renameInvalid" data-test="cover-template-rename-save" @click="saveRename">{{ t("common.save") }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -143,7 +157,7 @@ async function confirmDelete() {
       :busy="deleteBusy"
       :model-value="deleting !== null"
       :title="t('coverTemplates.deleteTitle')"
-      :text="t('coverTemplates.deleteText', { name: deleting?.name ?? '' })"
+      :text="t('coverTemplates.deleteText', { name: deleteName })"
       @update:model-value="deleting = null"
       @confirm="confirmDelete"
     />
