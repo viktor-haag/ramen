@@ -5,6 +5,7 @@ import type { AppStatus, ApplicationPatch } from "@/api/types";
 import AppointmentList from "@/components/AppointmentList.vue";
 import AttachmentList from "@/components/AttachmentList.vue";
 import ContactList from "@/components/ContactList.vue";
+import CoverLetterSection from "@/components/CoverLetterSection.vue";
 import FitSection from "@/components/FitSection.vue";
 import StatusHistory from "@/components/StatusHistory.vue";
 import { ACTIVE_STATUSES, allowedTargets } from "@/domain/status";
@@ -170,6 +171,7 @@ const tab = ref("posting");
     <v-tabs-window v-model="tab" class="pt-4">
       <v-tabs-window-item value="posting">
         <FitSection :key="posting.id" :posting-id="posting.id" :fit="posting.fit" class="mb-4" />
+        <CoverLetterSection :application-id="app.id" class="mb-4" />
         <div v-if="posting.description" class="description" data-test="posting-description">{{ posting.description }}</div>
         <div v-else class="text-medium-emphasis">{{ t("detail.noDescription") }}</div>
       </v-tabs-window-item>

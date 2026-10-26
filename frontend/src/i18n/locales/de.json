@@ -655,5 +655,37 @@
     "name": "Name",
     "deleteTitle": "Template löschen",
     "deleteText": "Das Template „{name}“ löschen? Bestehende Anschreiben behalten ihre eigene Kopie."
+  },
+  "coverLetter": {
+    "section": "Anschreiben",
+    "create": "Anschreiben erstellen",
+    "open": "Öffnen",
+    "none": "Noch kein Anschreiben.",
+    "exists": "Ein Entwurf liegt vor.",
+    "status": {
+      "generating": "Das Anschreiben wird geschrieben …",
+      "compiling": "Das PDF wird erzeugt …"
+    },
+    "language": {
+      "posting": "Sprache der Anzeige",
+      "de": "Deutsch",
+      "en": "Englisch"
+    },
+    "dialog": {
+      "title": "Anschreiben",
+      "formatLatex": "LaTeX (PDF)",
+      "formatText": "Reiner Text",
+      "template": "Template",
+      "language": "Sprache",
+      "context": "Was die KI verwenden darf",
+      "profile": "Mein Profil",
+      "noProfile": "Es wurde noch kein Profil erzeugt.",
+      "noText": "Für diese Unterlage liegt kein Text vor.",
+      "notes": "Hinweise für dieses Anschreiben",
+      "create": "Erstellen",
+      "regenerate": "Neu erzeugen",
+      "replaceTitle": "Anschreiben ersetzen?",
+      "replaceText": "Entwurf und Chatverlauf werden ersetzt."
+    }
   }
 }

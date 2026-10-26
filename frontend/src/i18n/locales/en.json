@@ -655,5 +655,37 @@
     "name": "Name",
     "deleteTitle": "Delete template",
     "deleteText": "Delete the template \"{name}\"? Existing cover letters keep their own copy."
+  },
+  "coverLetter": {
+    "section": "Cover letter",
+    "create": "Create cover letter",
+    "open": "Open",
+    "none": "No cover letter yet.",
+    "exists": "A draft exists.",
+    "status": {
+      "generating": "The letter is being written…",
+      "compiling": "The PDF is being compiled…"
+    },
+    "language": {
+      "posting": "Language of the posting",
+      "de": "German",
+      "en": "English"
+    },
+    "dialog": {
+      "title": "Cover letter",
+      "formatLatex": "LaTeX (PDF)",
+      "formatText": "Plain text",
+      "template": "Template",
+      "language": "Language",
+      "context": "What the AI may use",
+      "profile": "My profile",
+      "noProfile": "No profile has been generated yet.",
+      "noText": "No text available for this document.",
+      "notes": "Notes for this letter",
+      "create": "Create",
+      "regenerate": "Regenerate",
+      "replaceTitle": "Replace the cover letter?",
+      "replaceText": "The draft and chat history will be replaced."
+    }
   }
 }

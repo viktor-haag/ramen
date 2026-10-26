@@ -16,6 +16,8 @@ vi.mock("@/api/client", async (orig) => {
   const mod = await orig<typeof import("@/api/client")>();
   return { ...mod, api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), del: vi.fn(), upload: vi.fn() } };
 });
+// The cover letter section reads the router; the editor route belongs to a later task.
+vi.mock("vue-router", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 const get = vi.mocked(api.get);
 const post = vi.mocked(api.post);
 const patch = vi.mocked(api.patch);
