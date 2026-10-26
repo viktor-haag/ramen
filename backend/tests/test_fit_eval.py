@@ -6,7 +6,7 @@ from app.errors import ConflictError, NotFoundError, UpstreamError
 from app.llm.base import LLMResult
 from app.llm.errors import LLMError
 from app.models import Posting, UserProfile
-from app.services import fit, prompts
+from app.services import fit, posting_text, prompts
 from test_profile_docs import add_config
 
 PROFILE = "## Summary\nBackend engineer.\n\n## Constraints\nRemote only."
@@ -100,7 +100,7 @@ def test_description_is_cut_at_12000():
     text = build(posting_obj(description="a" * 12_000 + "Z" * 8_000))[1][0].parts[0]
     assert "a" * 12_000 + "\n[Truncated" in text and "Z" not in text
     assert "[Truncated: only the first 12000 of 20000 characters are shown.]" in text
-    assert fit.DESCRIPTION_CAP == 12_000
+    assert posting_text.DESCRIPTION_CAP == 12_000
     exact = build(posting_obj(description="a" * 12_000))[1][0].parts[0]
     assert "Truncated" not in exact
 
@@ -118,9 +118,9 @@ def test_whitespace_tag_variants_are_defused():
     text = build(posting_obj(description=evil))[1][0].parts[0]
     assert text.count("<posting>") == 1 and text.count("</posting>") == 1
     inside = text.split("<posting>\n", 1)[1].rsplit("\n</posting>", 1)[0]
-    assert fit._TAG.search(inside) is None
+    assert posting_text.defuse(inside, ("posting",)) == inside
     assert inside.endswith("a \u2039 /posting> b \u2039/ posting > c \u2039 POSTING > d \u2039\tposting\n> e")
-    assert fit._defuse("<postings>") == "<postings>"  # word boundary: other tags are left alone
+    assert posting_text.defuse("<postings>", ("posting",)) == "<postings>"  # word boundary: other tags are left alone
 
 
 def test_max_tokens():

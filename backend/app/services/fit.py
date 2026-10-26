@@ -16,9 +16,9 @@ from app.llm.factory import ConfigData
 from app.llm.runner import llm_call
 from app.models import Posting, UserProfile
 from app.services import prompts
+from app.services.posting_text import posting_block
 
 PURPOSE = "fit"
-DESCRIPTION_CAP = 12_000
 MAX_TOKENS = 2048
 RATINGS = ("good", "moderate", "poor")
 
@@ -51,48 +51,13 @@ def _language(lang: str) -> str:
     return "German" if lang == "de" else "English"
 
 
-def _remote(value: bool | None) -> str:
-    return "unknown" if value is None else ("yes" if value else "no")
-
-
-_TAG = re.compile(r"<\s*/?\s*posting\b", re.IGNORECASE)
 _THINK = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
-
-
-def _defuse(text: str) -> str:
-    """Posting text must not be able to close or open the data block: swap the tag's `<` for a lookalike."""
-    return _TAG.sub(lambda m: "\u2039" + m.group(0)[1:], text)
-
-
-def _posting_block(posting: Posting) -> str:
-    def val(v: str | None) -> str:
-        return _defuse((v or "").strip()) or "unknown"
-
-    lines = [
-        f"Title: {val(posting.title)}",
-        f"Company: {val(posting.company)}",
-        f"Location: {val(posting.location)}",
-        f"Employment type: {val(posting.employment_type)}",
-        f"Remote: {_remote(posting.remote)}",
-        f"Contract type: {val(posting.contract_type)}",
-    ]
-    description = _defuse((posting.description or "").strip())
-    if not description:
-        lines.append("Description: (no description available; judge from the key facts above and say so)")
-    else:
-        body = description[:DESCRIPTION_CAP]
-        if len(description) > DESCRIPTION_CAP:
-            body += (
-                f"\n[Truncated: only the first {DESCRIPTION_CAP} of {len(description)} characters are shown.]"
-            )
-        lines.append("Description:\n" + body)
-    return "<posting>\n" + "\n".join(lines) + "\n</posting>"
 
 
 def build_messages(profile_md: str, posting: Posting, lang: str, editable: str) -> tuple[str, list[Message]]:
     system = prompts.compose("fit", editable, language_line=f"Write the explanation in {_language(lang)}.")
     prompt = (
-        f"# Job seeker profile\n\n{profile_md.strip()}\n\n# Job posting\n\n{_posting_block(posting)}\n\n"
+        f"# Job seeker profile\n\n{profile_md.strip()}\n\n# Job posting\n\n{posting_block(posting)}\n\n"
         "Rate the fit now."
     )
     return system, [Message("user", [prompt])]
