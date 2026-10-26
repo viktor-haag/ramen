@@ -1,6 +1,10 @@
 # RAMEN – Applications Made Every Night
 
-<img src="docs/assets/ramen-logo-animated.svg" alt="RAMEN logo: a red panda peeking out of a ramen bowl" width="128">
+
+
+<p align="center">
+<img src="docs/assets/ramen-logo-animated.svg" alt="RAMEN logo: a red panda peeking out of a ramen bowl" width="256">
+</p>
 
 The name is a self-ironic, recursive-ish acronym for what this tool is about: job applications, written late at night.
 
@@ -15,7 +19,11 @@ A personal job tracker for one user, without login, meant to run on your own mac
 - **AI support (optional):** build a profile from your CV and other documents and let an LLM rate how well each
   posting fits that profile (fit evaluation).
 
-The interface is available in English and German, in a light and a dark theme.
+The interface is available in English and German, in a light and a dark theme. Here is a short overview how the app looks like:
+
+<p align="center">
+  <img src="docs/assets/ui.png" alt="ui of the web app" width="512">
+</p>
 
 ## Installation
 
