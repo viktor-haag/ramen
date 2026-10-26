@@ -101,6 +101,9 @@ def test_parse_answer():
     assert cl.parse_answer(answer_text("\\documentclass{article}\nHi", "n"), "latex") is None
     assert cl.parse_answer(answer_text("  ", "n"), "text") is None
     assert cl.parse_answer("", "text") is None
+    assert cl.parse_answer("Hi<think>xx", "text") == ("Hi", "")
+    assert cl.parse_answer("Hallo\r\n<<<RAMEN-NOTE>>>\r\nNotiz", "text") == ("Hallo", "Notiz")
+    assert cl.parse_answer("```latex\n" + LATEX + "```\n<<<RAMEN-NOTE>>>\nn", "latex") == (LATEX, "n")
 
 
 def test_texts():

@@ -3,7 +3,6 @@
 All user/posting/document text is data: it is defused so it cannot open or close a data block.
 No DB session is held during the LLM calls.
 """
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -15,7 +14,7 @@ from app.llm.runner import llm_call
 from app.models import Application, ProfileDocument, UserProfile
 from app.services import prompts
 from app.services.posting_text import DATA_TAGS, defuse, posting_block
-from app.services.stream_filter import NOTE_MARKER
+from app.services.stream_filter import NOTE_MARKER, strip_fences, strip_think
 
 PURPOSE = "cover_letter"
 DOC_CAP = 20_000
@@ -138,25 +137,21 @@ def forbidden_text(ctx: Context, current: str, command: str, line: int) -> str:
     )
 
 
-_THINK = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
-_FENCE = re.compile(r"\A\s*```[A-Za-z]*[ \t]*\n(.*?)\n?```\s*\Z", re.DOTALL)
-
-
 def parse_answer(text: str, fmt: str) -> tuple[str, str] | None:
     """Plain-text answer -> (document, note) if valid for `fmt` ("latex" or "text").
 
     Split at the last line that is (trimmed) `NOTE_MARKER`; without it the whole text is the document and
-    the note is empty. `<think>` blocks and code fences around the document are removed.
+    the note is empty. `<think>` blocks (an unclosed one cuts off the rest) and code fences around the
+    document are removed - the same helpers as `StreamFilter`, so the streamed preview is a prefix.
     """
-    text = _THINK.sub("", text or "")
+    text = strip_think(text or "")
     lines = text.split("\n")
     marks = [i for i, line in enumerate(lines) if line.strip() == NOTE_MARKER]
     if marks:
         document, note = "\n".join(lines[: marks[-1]]), "\n".join(lines[marks[-1] + 1:])
     else:
         document, note = text, ""
-    fenced = _FENCE.match(document)
-    document = (fenced.group(1) if fenced else document).strip()
+    document = strip_fences(document)
     if not document:
         return None
     if fmt == "latex" and not ("\\documentclass" in document and "\\end{document}" in document):

@@ -1,3 +1,6 @@
+import pytest
+
+from app.services.cover_letter_llm import parse_answer
 from app.services.stream_filter import NOTE_MARKER, StreamFilter
 
 
@@ -44,14 +47,14 @@ def test_think_split_across_chunks():
 
 def test_open_think_hides_rest():
     f = fed("Hi <think>secret")
-    assert f.visible == "Hi "
+    assert f.visible == "Hi"
     f.feed(" more</think> there")
     assert f.visible == "Hi  there"
 
 
 def test_partial_think_tag_held_back():
     f = fed("Hi <th")
-    assert f.visible == "Hi "
+    assert f.visible == "Hi"
     f.feed("e end")
     assert f.visible == "Hi <the end"
 
@@ -67,6 +70,50 @@ def test_fence_line_incomplete_shows_nothing_yet():
 
 def test_no_hold_back_for_unrelated_tail():
     assert fed("Dear team,").visible == "Dear team,"
+
+
+def test_fence_after_think_and_leading_whitespace():
+    raw = "<think>plan</think>\n\n```latex\n\\documentclass{a}\n\\end{document}\n```\n<<<RAMEN-NOTE>>>\nn"
+    assert fed(raw).visible == "\\documentclass{a}\n\\end{document}"
+    assert fed("\n```latex\nX").visible == "X"
+    assert fed("  \nDear").visible == "Dear"
+
+
+def test_closing_fence_hidden():
+    assert fed("```latex\nX\n```").visible == "X"
+    assert fed("```latex\nX\n``").visible == "X"
+    assert fed("```\nX```").visible == "X"
+
+
+def test_crlf_marker():
+    assert fed("Hallo\r\n<<<RAMEN-NOTE>>>\r\nNotiz").visible == "Hallo"
+
+
+ANSWERS = [
+    "<think>plan</think>\n\n```latex\n\\documentclass{a}\n\\begin{document}\nHi ``quoted''\n\\end{document}\n```\n"
+    "<<<RAMEN-NOTE>>>\nn",
+    "Sehr geehrte Damen und Herren,\r\n\r\nich bewerbe mich.\r\n\r\nMit freundlichen Grüßen\r\n<<<RAMEN-NOTE>>>\r\n"
+    "Telefon fehlt.",
+    "Dear team,\n\nI <think>hmm</think>apply.  \n\nRegards\n  <<<RAMEN-NOTE>>>  \nnote",
+    "```\nDear team,\nText with a <<<RAMEN-NOTE>>> inline.\n```\n<<<RAMEN-NOTE>>>\nnote",
+    "```latex\n\\documentclass{a}\n\\begin{document}\nX\n\\end{document}```\n<<<RAMEN-NOTE>>>\nn",
+    "Dear team,\nshort letter <3.\n",
+    "A\n<<<RAMEN-NOTE>>>\nB\n<<<RAMEN-NOTE>>>\nnote",
+    "<THINK>x</THINK>Hello `code` and <b> tags\n<<<RAMEN-NOTE>>>",
+]
+
+
+@pytest.mark.parametrize("answer", ANSWERS)
+def test_char_by_char_snapshots_are_growing_prefixes_of_the_parsed_document(answer):
+    document, _ = parse_answer(answer, "text")
+    f, previous = StreamFilter(), ""
+    for ch in answer:
+        f.feed(ch)
+        assert document.startswith(f.visible), (f.visible, document)
+        assert f.visible.startswith(previous), (previous, f.visible)
+        previous = f.visible
+    first_marker_cut = document.split("\n<<<RAMEN-NOTE>>>")[0]
+    assert f.visible == first_marker_cut
 
 
 def test_reset_clears():
