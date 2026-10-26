@@ -29,7 +29,7 @@ class CompileResult:
 class Compiler(Protocol):
     def available(self) -> bool: ...
 
-    def compile(self, tex: str) -> CompileResult: ...
+    def compile(self, tex: str, timeout: float | None = None) -> CompileResult: ...
 
 
 def error_excerpt(log: str, limit: int = 3000) -> str:
@@ -53,7 +53,7 @@ class TectonicCompiler:
         executable: Path | None,
         cache_dir: Path,
         user: str | None = None,
-        timeout: float = 60.0,
+        timeout: float = 180.0,
     ):
         self.executable = Path(executable) if executable else None
         self.cache_dir = Path(cache_dir)
@@ -109,7 +109,9 @@ class TectonicCompiler:
         except OSError:
             pass
 
-    def compile(self, tex: str) -> CompileResult:
+    def compile(self, tex: str, timeout: float | None = None) -> CompileResult:
+        """`timeout` (seconds) overrides the instance default for this run; waiting for the lock is not counted."""
+        timeout = self.timeout if timeout is None else timeout
         if not self.available():
             return CompileResult(None, None, "latex_unavailable")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -141,7 +143,7 @@ class TectonicCompiler:
                 except OSError as e:
                     return CompileResult(None, str(e), "latex_unavailable")
                 try:
-                    out, err = proc.communicate(timeout=self.timeout)
+                    out, err = proc.communicate(timeout=timeout)
                 except subprocess.TimeoutExpired:
                     self._kill_tree(proc)
                     try:

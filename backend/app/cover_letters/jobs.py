@@ -29,6 +29,7 @@ from app.models.posting import utcnow
 from app.services import cover_letter_llm
 from app.services.cover_letter_llm import Answer, Context
 from app.services.cover_letters import pdf_file, remove_pdf
+from app.services.settings import get_settings
 from app.services.stream_filter import StreamFilter
 
 log = logging.getLogger(__name__)
@@ -325,7 +326,7 @@ class CoverLetterJobs:
                     "detail": f"Line {violation.line} uses the forbidden command {violation.command}",
                 }, None)
                 return
-            result = self.compiler.compile(draft.content)
+            result = self.compiler.compile(draft.content, timeout=self._latex_timeout())
             if result.error_code is None and result.pdf is not None:
                 self._compiled(ref, result.pdf)
                 return
@@ -340,6 +341,11 @@ class CoverLetterJobs:
                 ref, {"code": code, "params": {}, "detail": COMPILE_DETAILS.get(code, "Compiling failed")}, excerpt
             )
             return
+
+    def _latex_timeout(self) -> float:
+        """Read per compile, so a changed setting applies without a restart."""
+        with self._session_factory() as session:
+            return float(get_settings(session).latex_timeout)
 
     def _auto_repair(self, ref: _Ref, draft: _Draft, text: str) -> None:
         """One automatic repair call; the draft is `generating` again while it runs, so its text is streamed."""

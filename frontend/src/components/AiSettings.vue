@@ -61,8 +61,10 @@ async function savePurposes() {
 }
 
 // --- fit settings and daily limit ---
-const settingsDraft = reactive<{ fit_auto: boolean; fit_concurrency: string; fit_language: "en" | "de"; kind: DailyLimitKind; value: string }>({
-  fit_auto: false, fit_concurrency: "2", fit_language: "en", kind: "none", value: "",
+const settingsDraft = reactive<{
+  fit_auto: boolean; fit_concurrency: string; fit_language: "en" | "de"; kind: DailyLimitKind; value: string; latex_timeout: string;
+}>({
+  fit_auto: false, fit_concurrency: "2", fit_language: "en", kind: "none", value: "", latex_timeout: "180",
 });
 const settingsErrors = ref<Record<string, string>>({});
 watch(
@@ -74,6 +76,7 @@ watch(
     settingsDraft.fit_language = s.fit_language;
     settingsDraft.kind = s.daily_limit_kind;
     settingsDraft.value = s.daily_limit_value === null ? "" : String(s.daily_limit_value);
+    settingsDraft.latex_timeout = String(s.latex_timeout ?? 180);
   },
   { immediate: true, deep: true },
 );
@@ -85,7 +88,7 @@ async function saveSettings() {
   const value = settingsDraft.kind === "none" || raw === "" ? null : Number(raw);
   savingSettings.value = true;
   settingsErrors.value = {};
-  const visible = ["fit_concurrency", "fit_language", "daily_limit_kind"];
+  const visible = ["fit_concurrency", "fit_language", "daily_limit_kind", "latex_timeout"];
   if (settingsDraft.kind !== "none") visible.push("daily_limit_value");
   const res = await store.saveSettings(
     {
@@ -95,6 +98,7 @@ async function saveSettings() {
       daily_limit_kind: settingsDraft.kind,
       daily_limit_value: value,
       update_check: store.settings?.update_check ?? true, // owned by the About card; the PUT is a full body
+      latex_timeout: Number(settingsDraft.latex_timeout),
     },
     visible,
   );
@@ -244,6 +248,18 @@ const totalRow = computed(() => {
           data-test="llm-limit-value"
         />
       </div>
+      <h3 class="text-subtitle-1 mt-4 mb-2">{{ t("ai.coverLetter.title") }}</h3>
+      <v-text-field
+        v-model="settingsDraft.latex_timeout"
+        type="number"
+        min="30"
+        max="600"
+        :label="t('ai.coverLetter.latexTimeout')"
+        :hint="t('ai.coverLetter.latexTimeoutHint')"
+        persistent-hint
+        :error-messages="settingsErrors.latex_timeout"
+        data-test="llm-latex-timeout"
+      />
     </v-card-text>
     <v-card-actions>
       <v-spacer />

@@ -372,6 +372,7 @@ export interface AppSettings {
   daily_limit_kind: DailyLimitKind;
   daily_limit_value: number | null;
   update_check: boolean;
+  latex_timeout: number; // seconds per LaTeX compile (30–600)
 }
 
 export interface VersionInfo {

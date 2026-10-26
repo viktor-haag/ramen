@@ -10,6 +10,7 @@ class SettingsIn(BaseModel):
     daily_limit_value: int | float | None = Field(default=None, ge=0, allow_inf_nan=False, validate_default=True)
     fit_language: Literal["en", "de"] = "en"  # language of automatic fit explanations
     update_check: bool = True  # periodically look for a newer release on GitHub
+    latex_timeout: int = Field(default=180, ge=30, le=600)  # seconds per Tectonic run (first runs fetch packages)
 
     @field_validator("daily_limit_value", mode="after")
     @classmethod

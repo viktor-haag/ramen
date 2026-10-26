@@ -371,7 +371,7 @@
     "template_builtin": "Das Standard-Template kann nicht umbenannt oder gelöscht werden.",
     "latex_unavailable": "PDF-Erzeugung ist nicht verfügbar: Tectonic ist nicht installiert.",
     "latex_failed": "Das LaTeX-Dokument konnte nicht kompiliert werden.",
-    "latex_timeout": "Das Kompilieren hat zu lange gedauert und wurde abgebrochen.",
+    "latex_timeout": "Das Kompilieren hat zu lange gedauert und wurde abgebrochen. Das Zeitlimit lässt sich in den Einstellungen erhöhen.",
     "latex_forbidden": "Zeile {line} verwendet {command}, das nicht erlaubt ist. Erlaubt sind nur Befehle aus dem Template und einfache Formatierung.",
     "internal_error": "Ein unerwarteter Fehler ist aufgetreten.",
     "unsupported_document_type": "Dieser Dateityp wird nicht unterstützt. Nutze PDF, PNG, JPG, WEBP, TXT oder MD.",
@@ -564,6 +564,11 @@
       "total": "Gesamt",
       "deleted": "Gelöschte Konfigurationen",
       "limitExceeded": "Tageslimit erreicht."
+    },
+    "coverLetter": {
+      "title": "Anschreiben",
+      "latexTimeout": "Zeitlimit fürs LaTeX-Kompilieren (Sekunden, 30–600)",
+      "latexTimeoutHint": "Erhöhen, wenn das erste Kompilieren mit neuen Paketen abbricht – Tectonic lädt sie dabei herunter."
     }
   },
   "fit": {

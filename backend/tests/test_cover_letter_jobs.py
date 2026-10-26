@@ -90,12 +90,14 @@ class FakeCompiler:
     def __init__(self, *results):
         self.results = list(results)
         self.calls: list[str] = []
+        self.timeouts: list[float | None] = []
 
     def available(self) -> bool:
         return True
 
-    def compile(self, tex: str) -> CompileResult:
+    def compile(self, tex: str, timeout: float | None = None) -> CompileResult:
         self.calls.append(tex)
+        self.timeouts.append(timeout)
         return self.results.pop(0)
 
 
@@ -185,8 +187,21 @@ def test_generate_latex_ok(sf, settings, make_jobs):
     assert cl.pdf_path == f"{cl_id}.pdf" and cl.compiled_at is not None and cl.compile_log is None
     assert cover_letters.pdf_file(settings, cl).read_bytes() == PDF
     assert compiler.calls == [LETTER]
+    assert compiler.timeouts == [180]  # default `latex_timeout` setting
     _, user_text, fmt = ask.calls[0]
     assert fmt == "latex" and "<template>" in user_text and "Lorem ipsum." in user_text
+
+
+def test_compile_uses_latex_timeout_setting(sf, make_jobs):
+    from app.models import AppSetting
+
+    with sf() as s:
+        s.add(AppSetting(key="latex_timeout", value=240))
+        s.commit()
+    cl_id = seed(sf)
+    compiler = FakeCompiler(ok())
+    run(make_jobs(FakeAsk(answer()), compiler), "generate", cl_id)
+    assert compiler.timeouts == [240]
 
 
 def test_generate_text_never_compiles(sf, make_jobs):
@@ -345,7 +360,7 @@ def test_application_deleted_during_compile(sf, settings, make_jobs):
     cl_id = seed(sf)
 
     class DeletingCompiler(FakeCompiler):
-        def compile(self, tex):
+        def compile(self, tex, timeout=None):
             with sf() as s:
                 s.delete(s.scalars(select(Application)).one())
                 s.commit()
@@ -393,7 +408,7 @@ def test_stale_job_does_not_write_into_reused_id_during_compile(sf, settings, ma
     cl_id = seed(sf)
 
     class ReplacingCompiler(FakeCompiler):
-        def compile(self, tex):
+        def compile(self, tex, timeout=None):
             replace_with_new_draft_same_id(sf, cl_id)
             return super().compile(tex)
 
@@ -654,7 +669,7 @@ def test_auto_repair_skipped_when_draft_deleted_after_compile(sf, settings, make
     ask = FakeAsk(answer(), answer(FIXED))
 
     class DeletingCompiler(FakeCompiler):
-        def compile(self, tex):
+        def compile(self, tex, timeout=None):
             with sf() as s:
                 s.delete(s.scalars(select(Application)).one())
                 s.commit()

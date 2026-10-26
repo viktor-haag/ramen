@@ -125,6 +125,15 @@ def test_fake_timeout(fake_exe, tmp_path):
     assert r.pdf is None and r.error_code == "latex_timeout"
 
 
+def test_timeout_per_call_overrides_default(fake_exe, tmp_path):
+    import time
+
+    t0 = time.monotonic()
+    r = TectonicCompiler(fake_exe, tmp_path / "cache", timeout=600).compile("SLEEP", timeout=0.5)
+    assert time.monotonic() - t0 < 8
+    assert r.error_code == "latex_timeout"
+
+
 def test_args_and_env(tmp_path, monkeypatch):
     from app.latex import compiler as mod
 

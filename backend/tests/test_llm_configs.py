@@ -265,9 +265,9 @@ def test_settings_defaults_update_and_bounds(client):
     assert client.get("/api/settings").json() == {
         "fit_auto": False, "fit_concurrency": 2, "daily_limit_kind": "none", "daily_limit_value": None,
         "fit_language": "en",
-        "update_check": True}
+        "update_check": True, "latex_timeout": 180}
     new = {"fit_auto": True, "fit_concurrency": 8, "daily_limit_kind": "tokens", "daily_limit_value": 50000,
-           "fit_language": "en", "update_check": True}
+           "fit_language": "en", "update_check": True, "latex_timeout": 600}
     res = client.put("/api/settings", json=new)
     assert res.status_code == 200 and res.json() == new
     assert client.get("/api/settings").json() == new
@@ -276,7 +276,8 @@ def test_settings_defaults_update_and_bounds(client):
     assert res.json()["daily_limit_value"] is None
     for bad in ({"fit_concurrency": 0}, {"fit_concurrency": 9}, {"daily_limit_kind": "weekly"},
                 {"daily_limit_value": -1}, {"daily_limit_kind": "eur", "daily_limit_value": None},
-                {"daily_limit_kind": "eur", "daily_limit_value": 0}):
+                {"daily_limit_kind": "eur", "daily_limit_value": 0},
+                {"latex_timeout": 29}, {"latex_timeout": 601}):
         assert client.put("/api/settings", json={**new, **bad}).status_code == 422, bad
     assert client.get("/api/settings").json()["daily_limit_kind"] == "none"  # nothing half-saved
 

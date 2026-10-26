@@ -371,7 +371,7 @@
     "template_builtin": "The default template cannot be renamed or deleted.",
     "latex_unavailable": "PDF generation is not available: Tectonic is not installed.",
     "latex_failed": "The LaTeX document could not be compiled.",
-    "latex_timeout": "Compiling took too long and was stopped.",
+    "latex_timeout": "Compiling took too long and was stopped. You can raise the time limit in the settings.",
     "latex_forbidden": "Line {line} uses {command}, which is not allowed. Only commands from the template and basic formatting are allowed.",
     "internal_error": "An unexpected error occurred.",
     "unsupported_document_type": "This file type is not supported. Use PDF, PNG, JPG, WEBP, TXT or MD.",
@@ -564,6 +564,11 @@
       "total": "Total",
       "deleted": "Deleted configurations",
       "limitExceeded": "Daily limit reached."
+    },
+    "coverLetter": {
+      "title": "Cover letters",
+      "latexTimeout": "LaTeX compile time limit (seconds, 30–600)",
+      "latexTimeoutHint": "Raise it if the first compile with new packages is stopped; Tectonic downloads them then."
     }
   },
   "fit": {

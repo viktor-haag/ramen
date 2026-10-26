@@ -10,6 +10,7 @@ DEFAULTS: dict[str, object] = {
     "daily_limit_value": None,
     "fit_language": "en",
     "update_check": True,
+    "latex_timeout": 180,
 }
 
 

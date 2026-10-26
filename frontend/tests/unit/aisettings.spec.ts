@@ -47,7 +47,7 @@ beforeEach(() => {
   for (const m of [get, post, put, del]) m.mockReset();
   configs = [cfg(), cfg({ id: 2, name: "Local", provider: "openai_compatible", base_url: "http://x/v1", api_key: null, has_api_key: false, supports_images: false, is_default: false })];
   purposes = { profile: null, fit: null, extraction: null, cover_letter: null };
-  settings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true };
+  settings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true, latex_timeout: 180 };
   usageData = usage();
   get.mockImplementation(async (path: string) => {
     if (path === "/prompts") return [] as never;
@@ -411,12 +411,23 @@ describe("AiSettings", () => {
     await type("[data-test=llm-concurrency] input", "4");
     await click("[data-test=llm-fit-auto] input");
     await click("[data-test=llm-settings-save]");
-    expect(put).toHaveBeenCalledWith("/settings", { fit_auto: true, fit_concurrency: 4, fit_language: "en", daily_limit_kind: "tokens", daily_limit_value: 50000, update_check: true });
+    expect(put).toHaveBeenCalledWith("/settings", { fit_auto: true, fit_concurrency: 4, fit_language: "en", daily_limit_kind: "tokens", daily_limit_value: 50000, update_check: true, latex_timeout: 180 });
     selectByTest(w, "llm-limit-kind").vm.$emit("update:modelValue", "none");
     await flushPromises();
     expect(q("[data-test=llm-limit-value]")).toBeNull();
     await click("[data-test=llm-settings-save]");
-    expect(put).toHaveBeenLastCalledWith("/settings", { fit_auto: true, fit_concurrency: 4, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true });
+    expect(put).toHaveBeenLastCalledWith("/settings", { fit_auto: true, fit_concurrency: 4, fit_language: "en", daily_limit_kind: "none", daily_limit_value: null, update_check: true, latex_timeout: 180 });
+    w.unmount();
+  });
+
+  it("shows the stored LaTeX timeout and saves a changed value", async () => {
+    settings = { ...settings, latex_timeout: 240 };
+    put.mockImplementation(async (_p: string, b: unknown) => b as never);
+    const w = await mountSettings();
+    expect((q("[data-test=llm-latex-timeout] input") as HTMLInputElement).value).toBe("240");
+    await type("[data-test=llm-latex-timeout] input", "300");
+    await click("[data-test=llm-settings-save]");
+    expect(put).toHaveBeenCalledWith("/settings", expect.objectContaining({ latex_timeout: 300 }));
     w.unmount();
   });
 
@@ -529,7 +540,7 @@ describe("AiSettings", () => {
 });
 
 describe("llm store save fallbacks", () => {
-  const body: AppSettings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "tokens", daily_limit_value: 1, update_check: true };
+  const body: AppSettings = { fit_auto: false, fit_concurrency: 2, fit_language: "en", daily_limit_kind: "tokens", daily_limit_value: 1, update_check: true, latex_timeout: 180 };
   const invalid = (field: string) =>
     new ApiError(422, "validation_error", { errors: [{ loc: ["body", field], msg: "bad value", type: "x" }] }, "invalid");
 
