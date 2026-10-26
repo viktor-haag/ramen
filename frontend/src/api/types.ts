@@ -468,3 +468,53 @@ export interface PromptOut {
   fixed_text: string;
   customized: boolean;
 }
+
+export type CoverLetterFormat = "latex" | "text";
+export type CoverLetterLanguage = "posting" | "de" | "en";
+export type CoverLetterStatus = "idle" | "generating" | "compiling";
+
+export interface CoverLetterContext {
+  profile: boolean;
+  document_ids: number[];
+  notes: string;
+}
+
+export interface CoverLetterIn {
+  format: CoverLetterFormat;
+  template_id: number | null;
+  language: CoverLetterLanguage;
+  context: CoverLetterContext;
+}
+
+export interface CoverLetterMessage {
+  id: number;
+  role: "user" | "assistant";
+  text: string;
+  created_at: string;
+}
+
+export interface CoverLetterOut {
+  id: number;
+  application_id: number;
+  format: CoverLetterFormat;
+  template_id: number | null;
+  template_name: string | null;
+  language: CoverLetterLanguage;
+  context: Record<string, unknown>;
+  content: string;
+  status: CoverLetterStatus;
+  error: ErrorBody | Record<string, unknown> | null;
+  compile_log: string | null;
+  pdf_available: boolean;
+  compiler_available: boolean;
+  compiled_at: string | null;
+  updated_at: string;
+  messages: CoverLetterMessage[];
+}
+
+export interface CoverLetterTemplate {
+  id: number;
+  name: string;
+  builtin: boolean;
+  created_at: string;
+}
