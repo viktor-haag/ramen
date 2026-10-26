@@ -155,6 +155,7 @@ const leaving = ref(false);
 let answerLeave: ((ok: boolean) => void) | null = null;
 function confirmLeave(): boolean | Promise<boolean> {
   if (!dirty.value) return true;
+  answerLeave?.(false); // an earlier navigation still waiting is cancelled
   leaving.value = true;
   return new Promise((resolve) => (answerLeave = resolve));
 }
@@ -222,7 +223,7 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
         >
           {{ t("coverLetter.view.attach") }}
         </v-btn>
-        <v-btn variant="tonal" prepend-icon="mdi-download" :href="sourceUrl" download :disabled="busy" data-test="cl-download">
+        <v-btn variant="tonal" prepend-icon="mdi-download" :href="sourceUrl" download :disabled="busy || dirty" data-test="cl-download">
           {{ latex ? t("coverLetter.view.downloadTex") : t("coverLetter.view.downloadTxt") }}
         </v-btn>
         <v-btn variant="text" prepend-icon="mdi-refresh" :disabled="busy" data-test="cl-regenerate" @click="regenerating = true">
@@ -232,6 +233,8 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
           {{ t("common.delete") }}
         </v-btn>
       </div>
+      <!-- Attach, download and repair work on the saved version, which differs from the editor. -->
+      <div v-if="dirty" class="text-caption text-medium-emphasis mb-2" data-test="cl-dirty-hint">{{ t("coverLetter.chat.saveFirst") }}</div>
 
       <div v-if="busy" class="mb-2" data-test="cl-busy">
         <v-progress-linear indeterminate color="primary" data-test="cl-progress" />
@@ -247,9 +250,10 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
         <div>{{ error.text }}</div>
         <template v-if="error.code === 'latex_failed'">
           <pre v-if="letter.compile_log" class="cl-log mt-2" data-test="cl-compile-log">{{ letter.compile_log }}</pre>
-          <v-btn class="mt-2" size="small" variant="flat" color="error" prepend-icon="mdi-auto-fix" :loading="repairing" data-test="cl-repair" @click="repair">
+          <v-btn class="mt-2" size="small" variant="flat" color="error" prepend-icon="mdi-auto-fix" :disabled="dirty" :loading="repairing" data-test="cl-repair" @click="repair">
             {{ t("coverLetter.view.repair") }}
           </v-btn>
+          <div v-if="dirty" class="text-caption mt-1" data-test="cl-repair-hint">{{ t("coverLetter.chat.saveFirst") }}</div>
         </template>
       </v-alert>
 

@@ -38,12 +38,41 @@ const markedLine = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// --- themes: the colours of ramenLight / ramenDark (plugins/vuetify.ts) ---
+// --- themes (light and dark, same structure): the colours of ramenLight / ramenDark (plugins/vuetify.ts) ---
 const base = EditorView.theme({
   "&": { height: "100%", fontSize: "14px" },
   ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", overflow: "auto" },
-  ".tex-error-line": { backgroundColor: "rgba(179, 56, 44, 0.18)" },
 });
+
+const lightTheme: Extension = [
+  EditorView.theme({
+    "&": { backgroundColor: "#FFFFFF", color: "#34241E" },
+    ".cm-content": { caretColor: "#C45220" },
+    ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#C45220" },
+    "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
+      backgroundColor: "#E9DFD6",
+    },
+    ".cm-gutters": { backgroundColor: "#F3ECE5", color: "#A88A78", borderRight: "1px solid #EFE4DA" },
+    ".cm-activeLine": { backgroundColor: "#F3ECE566" },
+    ".cm-activeLineGutter": { backgroundColor: "#EFE4DA" },
+    ".cm-matchingBracket, .cm-nonmatchingBracket": { backgroundColor: "#D9CFC7", outline: "none" },
+    ".cm-searchMatch": { backgroundColor: "#D9822B40" },
+    ".cm-panels": { backgroundColor: "#F3ECE5", color: "#34241E" },
+    ".cm-tooltip": { backgroundColor: "#FFFFFF", border: "1px solid #EFE4DA" },
+    ".tex-error-line": { backgroundColor: "rgba(179, 56, 44, 0.18)" },
+  }),
+  syntaxHighlighting(
+    HighlightStyle.define([
+      { tag: tags.tagName, color: "#C45220" },
+      { tag: tags.keyword, color: "#5B2A1F", fontWeight: "bold" },
+      { tag: [tags.atom, tags.number], color: "#3B6EA5" },
+      { tag: tags.special(tags.variableName), color: "#6A994E" },
+      { tag: [tags.string, tags.bracket], color: "#6B5248" },
+      { tag: tags.comment, color: "#A88A78", fontStyle: "italic" },
+      { tag: tags.invalid, color: "#B3382C" },
+    ]),
+  ),
+];
 
 const darkTheme: Extension = [
   EditorView.theme(
@@ -93,7 +122,7 @@ onMounted(() => {
         markedLine,
         languageConf.of(languageExt()),
         editableConf.of(editableExt()),
-        themeConf.of(props.dark ? darkTheme : []),
+        themeConf.of(props.dark ? darkTheme : lightTheme),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) emit("update:modelValue", u.state.doc.toString());
         }),
@@ -128,7 +157,7 @@ watch(
 );
 watch(() => props.language, () => view?.dispatch({ effects: languageConf.reconfigure(languageExt()) }));
 watch(() => props.disabled, () => view?.dispatch({ effects: editableConf.reconfigure(editableExt()) }));
-watch(() => props.dark, (d) => view?.dispatch({ effects: themeConf.reconfigure(d ? darkTheme : []) }));
+watch(() => props.dark, (d) => view?.dispatch({ effects: themeConf.reconfigure(d ? darkTheme : lightTheme) }));
 watch(() => props.highlightLine, (l) => markLine(l ?? null));
 </script>
 

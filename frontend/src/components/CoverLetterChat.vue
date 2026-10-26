@@ -34,7 +34,8 @@ async function send() {
 
 /** Enter sends, Shift+Enter inserts a line break. */
 function onKeydown(e: KeyboardEvent) {
-  if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+  // keyCode 229: Safari reports IME composition this way
+  if (e.key !== "Enter" || e.shiftKey || e.isComposing || e.keyCode === 229) return;
   e.preventDefault();
   void send();
 }

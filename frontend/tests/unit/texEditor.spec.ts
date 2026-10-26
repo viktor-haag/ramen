@@ -81,4 +81,12 @@ describe("TexEditor", () => {
     expect(viewOf(w).state.facet(EditorView.darkTheme)).toBe(false);
     w.unmount();
   });
+
+  it("uses the ramenLight theme in light mode", () => {
+    const w = mountEditor({ dark: false });
+    const css = [...document.querySelectorAll("style")].map((x) => x.textContent ?? "").join("\n").toLowerCase();
+    // the caret colour of the light theme (ramenLight primary) is registered for the editor
+    expect(css).toMatch(/caret-color: ?#c45220/);
+    w.unmount();
+  });
 });

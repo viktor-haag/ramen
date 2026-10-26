@@ -133,6 +133,34 @@ describe("CoverLetterView", () => {
     w.unmount();
   });
 
+  it("with unsaved edits, repair, attach and download wait for saving", async () => {
+    current = letterOut({ error: { code: "latex_failed", params: {}, detail: "x" }, compile_log: "! Error.", pdf_available: true });
+    const w = await mountView();
+    q("[data-test=cl-view-tex]")!.click();
+    await flushPromises();
+    await vi.waitFor(() => {
+      if (!q("[data-test=cl-editor] .cm-editor")) throw new Error("editor not loaded yet");
+    });
+    expect(q("[data-test=cl-repair]")!.classList).not.toContain("v-btn--disabled");
+    expect(q("[data-test=cl-repair-hint]")).toBeNull();
+    const { EditorView } = await import("@codemirror/view");
+    EditorView.findFromDOM(q("[data-test=cl-editor] .cm-editor")!)!.dispatch({ changes: { from: 0, insert: "% x\n" } });
+    await flushPromises();
+    for (const a of ["cl-repair", "cl-attach", "cl-download"]) {
+      expect(q(`[data-test=${a}]`)!.classList, a).toContain("v-btn--disabled");
+    }
+    expect(q("[data-test=cl-repair-hint]")!.textContent).toContain("Save your changes first");
+    expect(q("[data-test=cl-dirty-hint]")!.textContent).toContain("Save your changes first");
+    // a second leave attempt cancels the first one still waiting
+    const first = Promise.resolve(leaveGuards[0]!());
+    const second = Promise.resolve(leaveGuards[0]!());
+    expect(await first).toBe(false);
+    await flushPromises();
+    q("[data-test=cl-leave-dialog] [data-test=confirm-ok]")!.click();
+    expect(await second).toBe(true);
+    w.unmount();
+  });
+
   it("locks editor, chat and actions while generating", async () => {
     current = letterOut({ status: "generating", pdf_available: false });
     const w = await mountView();
@@ -193,6 +221,7 @@ describe("CoverLetterView", () => {
     ta.dispatchEvent(new Event("input"));
     await flushPromises();
     ta.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true }));
+    ta.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 229, bubbles: true })); // Safari IME
     await flushPromises();
     expect(post).toHaveBeenCalledTimes(1);
     ta.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
