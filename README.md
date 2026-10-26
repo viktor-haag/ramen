@@ -105,6 +105,8 @@ Optional environment variables (the defaults work out of the box):
 | `JOBTRACKER_FRONTEND_DIST` | – | Path to the built web interface (`frontend/dist`); without it only the API is served |
 | `JOBTRACKER_UPDATE_CHECK` | `true` | `false` switches off every update check, including **Check now** (see [Updates](#updates)) |
 | `JOBTRACKER_UPDATE_REPO` | `viktor-haag/ramen` | GitHub repository whose releases are checked for updates |
+| `JOBTRACKER_TECTONIC` | `tectonic` from `PATH` | Path to the Tectonic executable used for PDF cover letters (see [PDF (Tectonic)](#pdf-tectonic)) |
+| `JOBTRACKER_TECTONIC_USER` | � | System user that runs Tectonic in a separate process; set automatically in the Docker image |
 
 With Docker, set variables in `docker-compose.yml` under the service, e.g.:
 
@@ -257,6 +259,24 @@ explanation. It needs a profile and a configuration for the fit purpose.
   result based on an older version of your profile – use **Re-evaluate** to refresh it.
 - In the AI settings you can switch on automatic evaluation of new postings, set the number of parallel
   evaluations and the language of automatic explanations.
+
+### Cover letters
+
+Open an application and create a cover letter. Choose the format (PDF or plain text), the template, the language and
+the context the LLM should use (your profile, the posting, notes); it needs a configuration for the AI purposes. You
+get a preview of the PDF and can switch to the TeX editor to change the source by hand. Describe changes in the chat
+to have the LLM revise the letter, and save the result as an attachment of the application. Templates are managed
+under **Settings**. For safety, only the commands already used in the template plus basic text formatting are
+allowed in generated text; if you need further commands, put them into your own template.
+
+#### PDF (Tectonic)
+
+PDF cover letters are compiled with [Tectonic](https://tectonic-typesetting.github.io). The Docker image includes it,
+and the conda environment installs it. With venv (or on Windows), download it from the
+[GitHub releases](https://github.com/tectonic-typesetting/tectonic/releases) and put it on your `PATH`, or run
+`scoop install tectonic`; alternatively set `JOBTRACKER_TECTONIC` to its path. The first compile that needs new
+LaTeX packages requires an internet connection; they are cached afterwards. The extra isolation layer (Tectonic runs
+as a separate system user and the data folder is restricted to `0700`) exists only in Docker.
 
 ### Privacy
 
