@@ -22,7 +22,7 @@ A personal job tracker for one user, without login, meant to run on your own mac
 The interface is available in English and German, in a light and a dark theme. Here is a short overview how the app looks like:
 
 <p align="center">
-  <img src="docs/assets/ui.png" alt="ui of the web app" width="512">
+  <img src="docs/assets/ui.png" alt="ui of the web app" width="1024">
 </p>
 
 ## Installation
