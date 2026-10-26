@@ -22,6 +22,7 @@ def _out(request: Request, session: Session, status: UpdateStatus) -> VersionOut
         error=status.error,
         enabled=env_enabled and settings_service.get_settings(session).update_check,
         disabled_by_env=not env_enabled,
+        pdf_available=request.app.state.cover_letter_jobs.compiler.available(),
     )
 
 

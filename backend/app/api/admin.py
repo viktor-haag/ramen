@@ -27,6 +27,7 @@ def reset(request: Request) -> dict[str, dict[str, int]]:
     state.scheduler.sync()  # first: the data is gone, the scheduler must not outlive it
     admin.clear_attachments_dir(state.settings.attachments_dir)  # after the commit, best effort
     admin.clear_attachments_dir(state.settings.profile_dir)  # same: empty the folder, keep it
+    admin.clear_cover_letters_dir(state.settings.cover_letters_dir)
     return result
 
 

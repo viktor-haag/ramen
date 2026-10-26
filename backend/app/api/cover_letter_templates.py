@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Response, UploadFile
 from sqlalchemy.orm import Session
 
+from app.api.downloads import content_disposition
 from app.db import get_session
 from app.schemas.cover_letter import TemplateOut, TemplatePatch
 from app.services import cover_letter_templates as templates
@@ -44,5 +45,5 @@ def download_template(template_id: int, session: Session = Depends(get_session))
     return Response(
         content=template.content.encode("utf-8"),
         media_type="text/x-tex; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": content_disposition(filename)},
     )

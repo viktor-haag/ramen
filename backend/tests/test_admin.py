@@ -129,6 +129,10 @@ def test_reset_clears_everything(client, app, db):
     (prof_dir / "cv.txt").write_bytes(b"x")
     (prof_dir / "sub").mkdir()
     (prof_dir / "sub" / "scan.png").write_bytes(b"x")
+    cl_dir = app.state.settings.cover_letters_dir
+    letter_id = db.scalar(select(CoverLetter.id))
+    (cl_dir / f"{letter_id}.pdf").write_bytes(b"%PDF")
+    db.get(CoverLetter, letter_id).pdf_path = f"{letter_id}.pdf"
     # a scheduled profile, so that the scheduler has a job to drop
     db.add(SearchProfile(name="S", keywords=["b"], plugins=["fake"], schedule_hours=4))
     db.commit()
@@ -154,6 +158,8 @@ def test_reset_clears_everything(client, app, db):
     assert list(att_dir.iterdir()) == []
     assert prof_dir.is_dir()
     assert list(prof_dir.iterdir()) == []
+    assert cl_dir.is_dir()
+    assert list(cl_dir.iterdir()) == []
     assert app.state.scheduler.jobs() == {}
 
 
@@ -299,3 +305,14 @@ def test_delete_profile_with_escaping_stored_path_leaves_outside_file(client, ap
     assert outside.read_bytes() == b"keep"
     db.expire_all()
     assert count(db, ProfileDocument) == 0
+
+
+def test_clear_cover_letters_dir(tmp_path):
+    from app.services.admin import clear_cover_letters_dir
+
+    clear_cover_letters_dir(tmp_path / "missing")  # no directory: nothing to do
+    (tmp_path / "1.pdf").write_bytes(b"x")
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "x").write_bytes(b"x")
+    clear_cover_letters_dir(tmp_path)
+    assert tmp_path.is_dir() and list(tmp_path.iterdir()) == []

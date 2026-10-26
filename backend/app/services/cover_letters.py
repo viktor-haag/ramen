@@ -3,8 +3,6 @@
 Every function works on the given session; the caller commits.
 """
 from pathlib import Path
-from typing import Any
-
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
@@ -13,6 +11,7 @@ from app.errors import ConflictError, NotFoundError
 from app.models import Application, CoverLetter, CoverLetterMessage
 from app.models.enums import CoverLetterFormat, CoverLetterStatus, MessageRole
 from app.models.posting import utcnow
+from app.schemas.cover_letter import CoverLetterIn
 from app.services import cover_letter_templates, llm_configs, usage
 
 
@@ -75,31 +74,15 @@ def remove_pdf(session: Session, settings: Settings, cl: CoverLetter) -> None:
     cl.compiled_at = None
 
 
-def _context_dict(context: Any) -> dict:
-    """`ContextIn` (pydantic), any object with the three attributes, or a dict -> the stored JSON."""
-    if isinstance(context, dict):
-        get = context.get
-    else:
-        def get(name, default=None):
-            return getattr(context, name, default)
-    return {
-        "profile": bool(get("profile", True)),
-        "document_ids": [int(i) for i in (get("document_ids", None) or [])],
-        "notes": get("notes", "") or "",
-    }
-
-
-def replace(session: Session, settings: Settings, app_id: int, data: Any) -> CoverLetter:
+def replace(session: Session, settings: Settings, app_id: int, data: CoverLetterIn) -> CoverLetter:
     """Create the draft or reset all of it (history, PDF, content); `status = generating`.
 
-    `data` is a `CoverLetterIn` (format, template_id, language, context). For latex the template's content
-    is copied (`404 template_not_found`); text drafts have no template.
+    For latex the template's content is copied (`404 template_not_found`; `CoverLetterIn` guarantees a
+    `template_id`); text drafts have no template.
     """
-    fmt = CoverLetterFormat(data.format)
+    fmt = data.format
     template = None
     if fmt == CoverLetterFormat.latex:
-        if data.template_id is None:
-            raise NotFoundError("template_not_found", "Template not found", {"template_id": None})
         template = cover_letter_templates.get_template(session, data.template_id)
     cl = session.scalar(select(CoverLetter).where(CoverLetter.application_id == app_id))
     if cl is None:
@@ -114,7 +97,7 @@ def replace(session: Session, settings: Settings, app_id: int, data: Any) -> Cov
     cl.template_id = template.id if template is not None else None
     cl.template_content = template.content if template is not None else None
     cl.language = data.language
-    cl.context = _context_dict(data.context)
+    cl.context = data.context.model_dump()
     cl.content = ""
     cl.status = CoverLetterStatus.generating
     cl.error = None

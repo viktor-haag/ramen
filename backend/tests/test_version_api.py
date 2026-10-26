@@ -59,11 +59,14 @@ SETTINGS_BODY = {"fit_auto": False, "fit_concurrency": 2, "daily_limit_kind": "n
 
 def test_version_get_before_check(tmp_path):
     rec = Recorder()
-    with TestClient(make_app(tmp_path, rec)) as c:
+    app = make_app(tmp_path, rec)
+    with TestClient(app) as c:
         body = c.get("/api/version").json()
+        pdf = app.state.cover_letter_jobs.compiler.available()
     assert body == {
         "current": __version__, "latest": None, "update_available": False, "release_url": None,
         "published_at": None, "checked_at": None, "error": None, "enabled": True, "disabled_by_env": False,
+        "pdf_available": pdf,
     }
     assert rec.requests == []
 
@@ -184,3 +187,11 @@ def test_scheduler_add_update_check(sched):
     sched.sync()  # leaves it alone
     assert sched._scheduler.get_job("update-check") is job
     assert "update-check" in sched.jobs()
+
+
+@pytest.mark.parametrize("available", [True, False])
+def test_version_reports_pdf_available(tmp_path, available):
+    app = make_app(tmp_path, Recorder())
+    with TestClient(app) as c:
+        app.state.cover_letter_jobs.compiler = type("C", (), {"available": lambda self: available})()
+        assert c.get("/api/version").json()["pdf_available"] is available

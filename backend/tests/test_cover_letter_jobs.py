@@ -1,6 +1,5 @@
 """Cover letter state service and background jobs (spec 5.3-5.6), with a fake LLM and a fake compiler."""
 from datetime import UTC, datetime
-from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,6 +25,7 @@ from app.models import (
 from app.models.enums import CoverLetterFormat, CoverLetterLanguage, CoverLetterStatus, DocumentKind, MessageRole
 from app.models.posting import utcnow
 from app.services import cover_letter_llm, cover_letters
+from app.schemas.cover_letter import CoverLetterIn
 from app.services.cover_letter_llm import Answer
 
 TIMEOUT = 10
@@ -440,9 +440,9 @@ def test_jobs_expose_compiler(sf, settings):
 
 
 def data(fmt="latex", template_id=None, language="de", context=None):
-    return SimpleNamespace(
-        format=CoverLetterFormat(fmt), template_id=template_id, language=CoverLetterLanguage(language),
-        context=SimpleNamespace(**(context or {"profile": False, "document_ids": [1], "notes": "n"})),
+    return CoverLetterIn(
+        format=fmt, template_id=template_id, language=language,
+        context=context or {"profile": False, "document_ids": [1], "notes": "n"},
     )
 
 

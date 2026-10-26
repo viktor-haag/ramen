@@ -118,3 +118,8 @@ def clear_attachments_dir(attachments_dir: Path) -> None:
                 entry.unlink(missing_ok=True)
         except OSError:
             log.warning("Could not remove directory entry %s", entry, exc_info=True)
+
+
+def clear_cover_letters_dir(cover_letters_dir: Path) -> None:
+    """Compiled PDFs (spec 8): emptied like the attachments folder, after the commit, best effort."""
+    clear_attachments_dir(cover_letters_dir)

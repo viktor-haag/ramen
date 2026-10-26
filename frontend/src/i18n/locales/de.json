@@ -365,6 +365,7 @@
     "cover_letter_busy": "Das Anschreiben wird noch erstellt oder kompiliert. Bitte warte, bis es fertig ist.",
     "cover_letter_interrupted": "Durch einen Neustart unterbrochen. Starte es erneut.",
     "cover_letter_nothing_to_repair": "Es gibt keinen Kompilierfehler, der behoben werden könnte.",
+    "cover_letter_no_pdf": "Es gibt noch kein aktuelles PDF. Warte, bis das Kompilieren fertig ist, oder behebe den Kompilierfehler.",
     "template_not_found": "Template nicht gefunden.",
     "template_invalid": "Diese Datei ist als Template ungeeignet. Es muss eine UTF-8-codierte .tex-Datei mit höchstens 200 KB sein, die \\documentclass und \\end{document} enthält.",
     "template_builtin": "Das Standard-Template kann nicht umbenannt oder gelöscht werden.",

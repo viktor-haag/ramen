@@ -365,6 +365,7 @@
     "cover_letter_busy": "The cover letter is still being generated or compiled. Wait until it has finished.",
     "cover_letter_interrupted": "Interrupted by a restart. Start it again.",
     "cover_letter_nothing_to_repair": "There is no compile error to fix.",
+    "cover_letter_no_pdf": "There is no current PDF yet. Wait until compiling has finished or fix the compile error.",
     "template_not_found": "Template not found.",
     "template_invalid": "This file cannot be used as a template. It must be a UTF-8 encoded .tex file of at most 200 KB that contains \\documentclass and \\end{document}.",
     "template_builtin": "The default template cannot be renamed or deleted.",

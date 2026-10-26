@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from app.api import (
     admin,
     applications,
     cover_letter_templates,
+    cover_letters,
     dashboard,
     details,
     feed,
@@ -51,6 +53,8 @@ log = logging.getLogger(__name__)
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
+    if settings.tectonic_user:  # Docker (spec 6.3): Tectonic runs as another user and must not read the data
+        os.chmod(settings.data_dir, 0o700)
     settings.attachments_dir.mkdir(parents=True, exist_ok=True)
     settings.cover_letters_dir.mkdir(parents=True, exist_ok=True)
     engine = make_engine(settings.db_url)
@@ -134,6 +138,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(llm.router, prefix="/api")
     app.include_router(me.router, prefix="/api")
     app.include_router(cover_letter_templates.router, prefix="/api")
+    app.include_router(cover_letters.router, prefix="/api")
     app.include_router(prompts_api.router, prefix="/api")
     app.include_router(settings_api.router, prefix="/api")
     app.include_router(version_api.router, prefix="/api")

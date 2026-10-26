@@ -1,5 +1,6 @@
 import re
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -77,18 +78,20 @@ def get_attachment(session: Session, att_id: int) -> Attachment:
     return att
 
 
-def store(
-    session: Session, settings: Settings, app_id: int, upload: UploadFile, kind: AttachmentKind
+def _store(
+    session: Session, settings: Settings, app_id: int, name: str, kind: AttachmentKind,
+    write: Callable[[Path], object],
 ) -> Attachment:
+    """Shared by `store` and `store_bytes`: name handling, stored path, row; the file goes if anything fails."""
     get_application(session, app_id)
-    safe = safe_filename(upload.filename or "")
-    display = basename(upload.filename or "").strip() or safe
+    safe = safe_filename(name)
+    display = basename(name).strip() or safe
     display = "".join(c if c.isprintable() else "_" for c in display)[:255]
     stored = f"{app_id}/{uuid.uuid4()}_{safe}"
     path = resolve_path(settings, stored)
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        write_limited(upload, path)
+        write(path)
         att = Attachment(
             application_id=app_id, filename=safe, display_name=display, stored_path=stored, kind=kind
         )
@@ -98,6 +101,19 @@ def store(
         path.unlink(missing_ok=True)
         raise
     return att
+
+
+def store(
+    session: Session, settings: Settings, app_id: int, upload: UploadFile, kind: AttachmentKind
+) -> Attachment:
+    return _store(session, settings, app_id, upload.filename or "", kind, lambda path: write_limited(upload, path))
+
+
+def store_bytes(
+    session: Session, settings: Settings, app_id: int, filename: str, data: bytes, kind: AttachmentKind
+) -> Attachment:
+    """Like `store`, for content the app produced itself (e.g. a cover letter PDF)."""
+    return _store(session, settings, app_id, filename, kind, lambda path: path.write_bytes(data))
 
 
 def file_path(session: Session, settings: Settings, att_id: int) -> tuple[Attachment, Path]:
