@@ -48,8 +48,16 @@ test("cover letter: text letter with chat request, manual edit and attachment", 
   await page.locator('[data-test="cl-submit"]').click();
   await expect(page).toHaveURL(/\/applications\/\d+\/cover-letter$/);
   const assistant = page.locator('[data-test="cl-msg-assistant"]');
-  await expect(assistant.first()).toHaveText("Draft ready.", { timeout: 30_000 });
   const editor = page.locator('[data-test="cl-editor"]');
+  // The letter text streams into the editor before the chat note arrives.
+  await expect(page.locator('[data-test="cl-stream-status"]')).toContainText("Writing the cover letter", { timeout: 30_000 });
+  await expect
+    .poll(async () => {
+      const text = (await editor.textContent()) ?? "";
+      return text.includes("Dear Hiring Team") && (await assistant.count()) === 0;
+    }, { timeout: 30_000 })
+    .toBe(true);
+  await expect(assistant.first()).toHaveText("Draft ready.", { timeout: 30_000 });
   await expect(editor).toContainText("Dear Hiring Team");
 
   // 2. A chat request yields a second assistant message and a changed letter.

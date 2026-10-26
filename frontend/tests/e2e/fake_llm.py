@@ -5,12 +5,13 @@ Usage: python fake_llm.py <port>
 GET  /v1/models            -> one fake model
 POST /v1/chat/completions  -> a canned transcription when the request contains an image part,
                               a canned fit rating when the system prompt carries the fit instructions,
-                              a canned cover letter {"document", "note"} when it carries the cover letter instructions,
+                              a canned cover letter (document, <<<RAMEN-NOTE>>>, note) streamed as SSE when it carries the cover letter instructions,
                               otherwise a canned profile with all eight headings.
 """
 import json
 import re
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 MODEL = "fake-model"
@@ -35,6 +36,9 @@ TEXT_LETTER = (
     "Main paragraph: what you bring, backed by evidence.\n\n"
     "Sincerely,\nJane Doe\n"
 )
+NOTE_SEPARATOR = "\n<<<RAMEN-NOTE>>>\n"
+CHUNKS = 10
+CHUNK_DELAY = 0.15
 PROFILE = """## Summary
 Jane Doe is a Python developer with five years of experience.
 
@@ -82,14 +86,16 @@ def role_text(body: dict, *roles: str) -> str:
 
 
 def cover_letter(body: dict) -> str:
-    """Generate: the default letter (LaTeX or plain text, by the system prompt); revise: one paragraph replaced."""
+    """Generate: the default letter (LaTeX or plain text, by the system prompt); revise: one paragraph replaced.
+
+    Returns the streamed answer: document, the note separator, then the note."""
     document = TEXT_LETTER if "plain text" in role_text(body, "system", "developer") else LATEX_LETTER
     user = role_text(body, "user")
     if "Change the letter as follows:" in user:
         m = re.search(r"<current>\n(.*?)\n</current>", user, re.DOTALL)
         document = (m.group(1) if m else document).replace(OPENING, "Revised opening paragraph.")
-        return json.dumps({"document": document, "note": "Updated."})
-    return json.dumps({"document": document, "note": "Draft ready."})
+        return document + NOTE_SEPARATOR + "Updated."
+    return document + NOTE_SEPARATOR + "Draft ready."
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -100,6 +106,30 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
+
+    def _stream(self, model: str, text: str) -> None:
+        """OpenAI chat completions SSE: ~CHUNKS content pieces, a usage chunk, then [DONE]."""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.close_connection = True
+
+        def emit(choices: list, usage: dict | None = None) -> None:
+            chunk = {"id": "x", "object": "chat.completion.chunk", "created": 0, "model": model, "choices": choices}
+            if usage:
+                chunk["usage"] = usage
+            self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
+            self.wfile.flush()
+
+        size = max(1, -(-len(text) // CHUNKS))
+        for i in range(0, len(text), size):
+            emit([{"index": 0, "delta": {"content": text[i:i + size]}, "finish_reason": None}])
+            time.sleep(CHUNK_DELAY)
+        emit([], {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30})
+        self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.flush()
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path.rstrip("/") == "/v1/models":
@@ -119,6 +149,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if COVER_MARKER in role_text(body, "system", "developer"):
             text = cover_letter(body)
+            if body.get("stream"):
+                self._stream(body.get("model", MODEL), text)
+                return
         else:
             text = FIT if is_fit(body) else TRANSCRIPTION if has_image(body) else PROFILE
         self._send(200, {
