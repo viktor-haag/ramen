@@ -214,3 +214,21 @@ def test_client_disconnect_logs_no_error(client, app, jobs, caplog):
         with app.state.session_factory() as s:
             assert s.scalar(select(CoverLetter.status).where(CoverLetter.id == cl_id)) == CoverLetterStatus.generating
     assert not [rec for rec in caplog.records if rec.levelno >= logging.ERROR]
+
+
+def test_no_db_connection_held_while_streaming(client, app, jobs):
+    """Spec 7: between polls the endpoint holds no DB session (the pool has no checked-out connection)."""
+    app_id, cl_id, _ = make_draft(app)
+    pool = app.state.engine.pool
+    checked_out: list[int] = []
+
+    def script(n, _cl_id, _created_at):
+        checked_out.append(pool.checkedout())
+        if n == 3:
+            set_status(app, cl_id, CoverLetterStatus.idle)
+        return StreamSnapshot("generate", "Hallo", n)
+
+    jobs.script = script
+    events = collect(client, app_id)
+    assert events[-1] == END and len(checked_out) == 3
+    assert checked_out == [0, 0, 0]
