@@ -37,5 +37,8 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["live: tests hitting real external services (deselected by default)"]
+markers = [
+  "live: tests hitting real external services (deselected by default)",
+  "tectonic: tests that need the tectonic executable",
+]
 addopts = "-m 'not live'"

@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     frontend_dist: Path | None = None
     update_check: bool = True
     update_repo: str = "viktor-haag/ramen"
+    tectonic: Path | None = None
+    tectonic_user: str | None = None
 
     @field_validator("plugin_dirs", mode="before")
     @classmethod
@@ -37,3 +39,11 @@ class Settings(BaseSettings):
     @property
     def profile_dir(self) -> Path:
         return self.data_dir / "profile"
+
+    @property
+    def cover_letters_dir(self) -> Path:
+        return self.data_dir / "cover_letters"
+
+    @property
+    def tectonic_cache_dir(self) -> Path:
+        return self.data_dir / "tectonic_cache"
